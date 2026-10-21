@@ -333,3 +333,14 @@ html.rot .logoimg.pulse { width: 140px; }
 html.rot .splashimg { width: 200px; }
 html.rot .badgeimg { width: 60px; height: 60px; }
 html.rot .wordimg { width: 200px; margin-bottom: 4px; }
+
+/* ضربات الجزاء */
+.pensbar { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 4px; background: rgba(16,14,12,0.85); padding: 6px 12px; border-radius: 10px; }
+.pensbar .pr { display: flex; align-items: center; gap: 10px; border-inline-start: 4px solid var(--tc); padding-inline-start: 8px; }
+.pensbar .pr b { min-width: 54px; font-size: 14px; }
+.pensbar .pr span { display: flex; gap: 6px; font-size: 16px; direction: rtl; }
+.pensbar .pr i { font-style: normal; color: rgba(255,255,255,0.4); }
+.pensbar .pr i.ok { color: #6ed36a; }
+.pensbar .pr i.no { color: #ff5a4a; }
+.pensbar .pr.now { background: rgba(255,210,63,0.12); border-radius: 6px; }
+.pensres { text-align: center; font-weight: 700; margin: -4px 0 10px; display: flex; gap: 8px; justify-content: center; }

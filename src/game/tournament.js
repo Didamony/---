@@ -52,13 +52,14 @@ export class Tournament {
     const [a, b] = match.score;
     let earn = a * MONEY.goal + match.stats.nutmegs[0] * MONEY.nutmeg;
     let result = 'draw';
-    if (a > b) { earn += MONEY.win; result = 'win'; }
-    else if (a === b) earn += MONEY.draw;
+    const w = match.winner;
+    if (w === 0) { earn += a > b ? MONEY.win : Math.round(MONEY.win * 0.75); result = 'win'; }
+    else if (w === -1) earn += MONEY.draw;
     else result = 'lose';
     if (b === 0) earn += MONEY.cleanSheet;
     this.s.money += earn;
     if (this.s.foul > 0) this.s.foul--;
-    this.s.results[this.s.stage] = { score: [a, b], result };
+    this.s.results[this.s.stage] = { score: [a, b], result, pens: match.pensResult || null };
     if (result === 'win') {
       this.s.stage++;
       if (this.s.stage >= TOURNAMENT.length) this.s.done = true;

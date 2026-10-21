@@ -135,8 +135,8 @@ export class Match {
   teamDef(t) { return TEAMS[this.teamKeys[t]]; }
   aiLevel(team) { return DIFFICULTY[this.humanTeams[team] ? 'normal' : this.difficulty]; }
   aiSkill(p) { return this.aiLevel(p.team).skill; }
-  goalFor(team) { return this.ctx.goals.find((g) => g.side === (team === 0 ? 1 : -1)); }
-  ownGoal(team) { return this.ctx.goals.find((g) => g.side === (team === 0 ? -1 : 1)); }
+  goalFor(team) { return this.pens ? this.pens.goal : this.ctx.goals.find((g) => g.side === (team === 0 ? 1 : -1)); }
+  ownGoal(team) { return this.pens ? this.pens.goal : this.ctx.goals.find((g) => g.side === (team === 0 ? -1 : 1)); }
   goalkeeper(team) { return this.teams[team].find((p) => p.isGK && p.active); }
 
   nearestTo(pos, team, filter) {
@@ -281,7 +281,7 @@ export class Match {
     if (info.kind === 'shot') {
       audio.play('kick', 0.6 + (info.power || 0.5) * 0.8);
       if (p.ctrl) this.buzz(25 + Math.round((info.power || 0.5) * 30));
-      this.stats.shots[p.team]++;
+      if (!this.pens) this.stats.shots[p.team]++;
       this.lastShot = { team: p.team, t: this.time, by: p };
       if (info.power > 0.8) this.rig.shake(0.12, 0.2);
       this.fx.puff(tmp.set(ball.pos.x, 0.05, ball.pos.z), { n: 3, size: 0.4, life: 0.6 });
@@ -610,6 +610,9 @@ export class Match {
         break;
       case 'end':
         if (this.stateT > 3.2 && !this.resultShown) { this.resultShown = true; this.ui.showResult(this); }
+        break;
+      case 'pens':
+        this.updatePens(dt);
         break;
     }
 
@@ -1457,14 +1460,197 @@ export class Match {
     this.ui.bubble(who, text, opts);
   }
 
+  // ======================================================== ضربات الجزاء
+  startPens() {
+    const g = this.ctx.goals.find((q) => q.side > 0);
+    const spot = { bricks: 6, slippers: 5, chalk: 6.5, frame: 7.5 }[g.type] || 6;
+    this.pens = { goal: g, spotX: g.x - Math.sign(g.x) * spot, kicks: [[], []], turn: this.kickTeam === 0 ? 1 : 0, phase: 'setup', t: 0, aim: 0, charge: 0 };
+    this.setState('pens');
+    this.owner = null;
+    for (const p of this.allPlayers) { p.releasePull(); p.stopCelebrate(); if (!p.active && p.state !== 'out') continue; p.show(true); p.setState('play'); }
+    audio.play('whistle', 2);
+    this.ui.banner('ضربات جزاء!', 'التعادل بيتحسم من علامة الجزاء', 'warn');
+    // علامة الجزاء وعلامة النيشان
+    const mk = new THREE.Mesh(new THREE.CircleGeometry(0.12, 16), new THREE.MeshBasicMaterial({ color: '#f4f2ea' }));
+    mk.rotation.x = -Math.PI / 2;
+    mk.position.set(this.pens.spotX, 0.012, 0);
+    this.scene.add(mk);
+    this.pens.aimMark = new THREE.Mesh(new THREE.RingGeometry(0.11, 0.16, 24), new THREE.MeshBasicMaterial({ color: '#ffd23f', depthTest: false, transparent: true, opacity: 0.9 }));
+    this.pens.aimMark.renderOrder = 12;
+    this.pens.aimMark.rotation.y = -Math.PI / 2 * Math.sign(g.x);
+    this.pens.aimMark.visible = false;
+    this.scene.add(this.pens.aimMark);
+    this.ui.pens(this.pens, this);
+  }
+
+  pensSetupKick() {
+    const P = this.pens, g = P.goal, dir = Math.sign(g.x);
+    const kt = P.turn, gt = 1 - kt;
+    const round = P.kicks[kt].length;
+    const outfield = this.teams[kt].filter((p) => !p.isGK);
+    P.kicker = outfield[(round + 1) % outfield.length] || this.teams[kt][1];
+    P.keeper = this.teams[gt].find((p) => p.isGK) || this.teams[gt][0];
+    // الباقيين على خط النص
+    this.allPlayers.forEach((p, i) => {
+      if (p === P.kicker || p === P.keeper) return;
+      p.place(-dir * 1.5 + (p.team ? -1 : 1) * 0.6, -this.def.halfW * 0.7 + (i % 8) * (this.def.halfW * 1.4 / 7), dir > 0 ? Math.PI / 2 : -Math.PI / 2);
+      p.want.set(0, 0);
+    });
+    P.kicker.place(P.spotX - dir * 0.75, 0, dir > 0 ? Math.PI / 2 : -Math.PI / 2);
+    P.keeper.place(g.x - dir * 0.5, 0, dir > 0 ? -Math.PI / 2 : Math.PI / 2);
+    P.keeper.setState('play');
+    P.keeper.anim.play('ready');
+    this.owner = null;
+    this.ball.place(P.spotX, 0);
+    this.ball.vel.set(0, 0, 0);
+    this.giveBall(P.kicker);
+    P.kicker.cool.steal = 99;
+    P.phase = 'aim';
+    P.t = 0;
+    P.aim = 0;
+    P.charge = 0;
+    P.lift = 0.3;
+    P.result = null;
+    P.dove = false;
+    const human = this.controllers[kt];
+    P.humanKick = !!human;
+    P.humanKeep = !!this.controllers[gt];
+    P.aiAim = (chance(0.15) ? 0 : (chance(0.5) ? 1 : -1) * randRange(0.45, 0.95));
+    P.aiPower = randRange(0.55, 0.85);
+    P.aimMark.visible = P.humanKick;
+    this.focusOverride = new THREE.Vector3((P.spotX + g.x) / 2, 0, 0);
+    this.rig.zoomTarget = 0.62;
+    this.say(P.kicker, P.humanKick ? 'يلا بينا..' : 'هجيبها!');
+    this.ui.pens(P, this);
+    if (P.humanKick || P.humanKeep) this.ui.toast(P.humanKick ? 'وجّه بالاستيك ودوس شوطة (كل ما تفضل داسس أقوى)' : 'إنت الحارس: الاستيك ساعة الشوطة بيحدد هتنط فين');
+  }
+
+  updatePens(dt) {
+    const P = this.pens;
+    P.t += dt;
+    const g = P.goal, dir = Math.sign(g.x);
+    if (P.phase === 'setup') { if (P.t > (P.kicks[0].length + P.kicks[1].length === 0 ? 2.2 : 1.2)) this.pensSetupKick(); return; }
+    const k = P.kicker, gk = P.keeper;
+    if (P.phase === 'aim') {
+      gk.lookAt = this.ball.pos;
+      const kc = this.controllers[k.team];
+      if (P.humanKick) {
+        P.aim = clamp(P.aim + kc.axis.z * dt * 1.6, -1, 1);
+        if (kc.b.shoot.down) { P.charge = Math.min(1, kc.b.shoot.t / 0.9); this.ui.power(P.charge); }
+        P.aimMark.position.set(g.x - dir * 0.05, 0.25 + P.charge * g.h * 0.7, P.aim * g.hw * 0.85);
+        if (kc.b.shoot.released || P.t > 8) this.pensKick(Math.max(0.35, P.charge), P.aim);
+      } else if (P.t > 1.4) this.pensKick(P.aiPower, P.aiAim);
+      return;
+    }
+    if (P.phase === 'kick') {
+      // الحارس بينط ساعة ما الكورة تتشاط
+      if (!P.dove && !this.owner) {
+        P.dove = true;
+        let side = 0;
+        const gc = this.controllers[gk.team];
+        if (P.humanKeep) side = Math.abs(gc.axis.z) > 0.3 ? Math.sign(gc.axis.z) : 0;
+        else {
+          const read = chance(this.aiSkill(gk) * 0.4);
+          side = read ? Math.sign(this.ball.vel.z) : (chance(0.2) ? 0 : (chance(0.5) ? 1 : -1));
+        }
+        // يمين الحارس = (-cos f, sin f) وهو باصص ناحية الكورة
+        if (side !== 0) {
+          const rightZ = Math.sin(gk.facing);
+          gk.dive(Math.sign(side * rightZ) || 1, 5.5);
+        }
+      }
+      // صدّ؟
+      if (!P.result && P.dove) {
+        const b = this.ball.pos;
+        gk.char.J.lHand.getWorldPosition(tmp);
+        gk.char.J.rHand.getWorldPosition(tmp2);
+        const near = Math.min(tmp.distanceTo(b), tmp2.distanceTo(b), dist2(gk.pos.x, gk.pos.z, b.x, b.z) + Math.abs(b.y - 0.9));
+        if (near < 0.42 && this.ball.speed() > 2) {
+          P.result = 'save';
+          this.ball.vel.x *= -0.35; this.ball.vel.z = this.ball.vel.z * 0.4 + randRange(-3, 3); this.ball.vel.y = Math.abs(this.ball.vel.y) * 0.4 + 2;
+          audio.play('save');
+          this.say(gk, pick(LINES.save), { color: '#ffd23f', big: true });
+        }
+      }
+      if (!P.result) {
+        const b = this.ball.pos;
+        const past = (b.x - g.x) * dir > (g.type === 'chalk' ? -this.ball.r - 0.08 : 0.05);
+        if (past) P.result = Math.abs(b.z) < g.hw - 0.02 && b.y < g.h ? 'goal' : 'miss';
+        else if (P.t > 2.6 || (this.ball.speed() < 0.6 && P.t > 0.8)) P.result = 'miss';
+      }
+      if (P.result && !P.shown) {
+        P.shown = true;
+        const scored = P.result === 'goal';
+        P.kicks[k.team].push(scored);
+        if (scored) { audio.play('cheer'); this.ui.banner('جووون!', `${k.name} سجّلها`, 'goal', k.team); this.buzz([100, 50, 150]); }
+        else { audio.play('ooh'); this.ui.banner(P.result === 'save' ? 'صدّها!' : 'طاشت!', P.result === 'save' ? gk.name : k.name, 'small'); }
+        k.anim.play(scored ? 'airplane' : 'sad');
+        this.ui.pens(P, this);
+        P.after = 0;
+      }
+      if (P.shown) {
+        P.after += dt;
+        if (P.after > 2.2) {
+          k.anim.stop('airplane'); k.anim.stop('sad');
+          P.shown = false;
+          const done = this.pensDecided();
+          if (done !== null) return this.finishPens(done);
+          P.turn = 1 - P.turn;
+          P.phase = 'setup';
+          P.t = 1;
+        }
+      }
+    }
+  }
+
+  pensKick(power, aim) {
+    const P = this.pens;
+    P.aimMark.visible = false;
+    this.ui.power(0);
+    const ok = P.kicker.shoot(power, aim, power * 0.4);
+    if (!ok) { this.giveBall(P.kicker); return; }
+    P.phase = 'kick';
+    P.t = 0;
+  }
+
+  // مين كسب؟ null = لسه
+  pensDecided() {
+    const [a, b] = this.pens.kicks;
+    const sa = a.filter(Boolean).length, sb = b.filter(Boolean).length;
+    if (a.length <= 5 && b.length <= 5) {
+      const ra = 5 - a.length, rb = 5 - b.length;
+      if (sa + ra < sb) return 1;
+      if (sb + rb < sa) return 0;
+      if (a.length === 5 && b.length === 5 && sa !== sb) return sa > sb ? 0 : 1;
+      return null;
+    }
+    // موت مفاجئ
+    if (a.length === b.length && sa !== sb) return sa > sb ? 0 : 1;
+    return null;
+  }
+
+  finishPens(w) {
+    const [a, b] = this.pens.kicks;
+    this.pensResult = [a.filter(Boolean).length, b.filter(Boolean).length];
+    this.pensWinner = w;
+    this.pensDone = true;
+    this.scene.remove(this.pens.aimMark);
+    this.pens = null;
+    this.focusOverride = null;
+    this.rig.zoomTarget = 1;
+    this.state = 'postpens';
+    this.endMatch();
+  }
+
   // ======================================================== النهاية
   endMatch() {
-    if (this.state === 'end') return;
+    if (this.state === 'end' || this.state === 'pens') return;
+    if (this.score[0] === this.score[1] && !this.opts.demo && !this.pensDone) { this.startPens(); return; }
     this.setState('end');
     this.owner = null;
     audio.play('whistle', 3);
     const [a, b] = this.score;
-    const winner = a > b ? 0 : b > a ? 1 : -1;
+    const winner = a > b ? 0 : b > a ? 1 : this.pensWinner ?? -1;
     this.winner = winner;
     for (const p of this.allPlayers) {
       p.releasePull();
@@ -1474,7 +1660,9 @@ export class Match {
       p.anim.play(p.team === winner ? 'jump' : 'sad');
     }
     this.scorer = null;
-    this.ui.banner('خلص الماتش!', `${this.teamDef(0).short} ${arNum(this.score[0])} • ${this.teamDef(1).short} ${arNum(this.score[1])}`, 'end');
+    const pensTxt = this.pensResult ? ` (ضربات جزاء ${arNum(this.pensResult[0])} - ${arNum(this.pensResult[1])})` : '';
+    this.ui.banner('خلص الماتش!', `${this.teamDef(0).short} ${arNum(this.score[0])} • ${this.teamDef(1).short} ${arNum(this.score[1])}${pensTxt}`, 'end');
+    this.ui.pens(null);
     audio.toktokMusic(false);
   }
 

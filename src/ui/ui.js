@@ -39,6 +39,7 @@ export class UI {
         <div class="mapname"><b></b><small></small></div>
         <div class="hm hidden">👀 الناظر برة!</div>
         <div class="power hidden"><i></i><span>شوطة</span></div>
+        <div class="pensbar hidden"><div class="pr p0"><b></b><span></span></div><div class="pr p1"><b></b><span></span></div></div>
         <div class="who w0 hidden"><b></b><div class="stam"><i></i></div></div>
         <div class="who w1 hidden"><b></b><div class="stam"><i></i></div></div>
         <div class="keys"></div>
@@ -325,7 +326,7 @@ export class UI {
   showTourney() {
     const T = this.game.tourney;
     const sc = this.screens.tourney;
-    $('.tinfo', sc).innerHTML = `<div class="money">💰 ${arNum(T.money)} جنيه</div>${T.s.done ? '<div class="champ">🏆 إنتوا أبطال الحتة! كسبتوا الكاس!</div>' : '<p>اكسب الخمس ماتشات عشان تاخد كأس الحتة. التعادل يعني تعيد الماتش.</p>'}`;
+    $('.tinfo', sc).innerHTML = `<div class="money">💰 ${arNum(T.money)} جنيه</div>${T.s.done ? '<div class="champ">🏆 إنتوا أبطال الحتة! كسبتوا الكاس!</div>' : '<p>اكسب الخمس ماتشات عشان تاخد كأس الحتة. لو اتعادلت، بتتحسم بضربات جزاء.</p>'}`;
     const lad = $('.ladder', sc);
     lad.innerHTML = '';
     TOURNAMENT.forEach((m, i) => {
@@ -525,6 +526,24 @@ export class UI {
     m.classList.remove('pulse'); void m.offsetWidth; m.classList.add('pulse');
   }
 
+  // عدّاد ضربات الجزاء: ● جون ✕ ضاعت ○ لسه
+  pens(P, m) {
+    const el = $('.pensbar', this.hudEl);
+    if (!P) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    for (let t = 0; t < 2; t++) {
+      const row = $(`.p${t}`, el);
+      $('b', row).textContent = m.teamDef(t).short;
+      row.style.setProperty('--tc', m.teamColor(t));
+      const ks = P.kicks[t];
+      const n = Math.max(5, ks.length + (P.turn === t ? 1 : 0));
+      let h = '';
+      for (let i = 0; i < n; i++) h += i < ks.length ? (ks[i] ? '<i class="ok">●</i>' : '<i class="no">✕</i>') : '<i>○</i>';
+      $('span', row).innerHTML = h;
+      row.classList.toggle('now', P.turn === t && P.phase !== 'setup');
+    }
+  }
+
   headmaster(v) { $('.hm', this.hudEl).classList.toggle('hidden', !v); }
 
   showResult(m) {
@@ -539,6 +558,7 @@ export class UI {
     $('.res', sc).innerHTML = `
       <h2 class="ttl">${title}</h2>
       <div class="final"><span style="--tc:${t0.ui}">${t0.name}</span><b>${pair(m.score[0], m.score[1])}</b><span style="--tc:${t1.ui}">${t1.name}</span></div>
+      ${m.pensResult ? `<div class="pensres">ضربات الجزاء: ${pair(m.pensResult[0], m.pensResult[1])}</div>` : ''}
       <ul class="scorers">${goals}</ul>
       <div class="stats">
         <div><b>${pair(m.stats.fouls[0], m.stats.fouls[1])}</b><small>فاولات</small></div>
@@ -548,7 +568,7 @@ export class UI {
         <div><b>${arNum(m.stats.momCalls)}</b><small>أمه نادت</small></div>
         <div><b>${arNum(m.stats.windows)}</b><small>إزاز اتكسر</small></div>
       </div>
-      ${earn ? `<div class="earn">💰 كسبت ${arNum(earn.earn)} جنيه ${earn.result === 'win' ? '' : earn.result === 'draw' ? '• تعادل يعني تعيد الماتش' : '• لازم تكسب عشان تكمل'}</div>` : ''}`;
+      ${earn ? `<div class="earn">💰 كسبت ${arNum(earn.earn)} جنيه ${earn.result === 'win' ? '' : '• لازم تكسب عشان تكمل'}</div>` : ''}`;
     const act = $('.actions', sc);
     act.innerHTML = '';
     if (m.opts.tourney) {
