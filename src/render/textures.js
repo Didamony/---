@@ -123,6 +123,26 @@ export function groundTexture(kind, sizeX, sizeZ, field, seed = 3) {
       }
       blotches(g, W, H, rng, 50, 'rgba(70,65,55,0.25)', 40, 160);
       speckle(g, W, H, rng, 25000, ['rgba(60,55,50,0.2)', 'rgba(240,235,225,0.2)'], 1, 3);
+    } else if (kind === 'sand') {
+      g.fillStyle = '#d8bf8c';
+      g.fillRect(0, 0, W, H);
+      blotches(g, W, H, rng, 80, 'rgba(190,160,110,0.28)', 40, 200);
+      blotches(g, W, H, rng, 60, 'rgba(240,220,180,0.32)', 40, 160);
+      speckle(g, W, H, rng, 90000, ['rgba(150,120,80,0.3)', 'rgba(250,240,215,0.3)', 'rgba(120,100,70,0.25)'], 1, 3);
+      // آثار رجلين ومطبات رمل
+      for (let i = 0; i < 260; i++) {
+        const x = rng() * W, y = rng() * H, a = rng() * 6.28;
+        g.fillStyle = 'rgba(150,120,80,0.25)';
+        g.beginPath(); g.ellipse(x, y, 5, 9, a, 0, 7); g.fill();
+      }
+      // صداف صغير
+      speckle(g, W, H, rng, 900, ['#f4ece0', '#e8d4c0', '#c9b8a8'], 2, 4);
+      // الرمل المبلول ناحية البحر
+      const wg = g.createLinearGradient(0, 0, 0, H * 0.14);
+      wg.addColorStop(0, 'rgba(120,100,70,0.55)');
+      wg.addColorStop(1, 'rgba(120,100,70,0)');
+      g.fillStyle = wg;
+      g.fillRect(0, 0, W, H * 0.14);
     } else if (kind === 'roof') {
       g.fillStyle = '#9b9488';
       g.fillRect(0, 0, W, H);
@@ -136,7 +156,7 @@ export function groundTexture(kind, sizeX, sizeZ, field, seed = 3) {
 
     // علامات الطباشير
     g.save();
-    g.strokeStyle = kind === 'dirt' ? 'rgba(240,235,220,0.55)' : 'rgba(245,245,238,0.7)';
+    g.strokeStyle = kind === 'dirt' ? 'rgba(240,235,220,0.55)' : kind === 'sand' ? 'rgba(110,85,55,0.55)' : 'rgba(245,245,238,0.7)';
     g.lineWidth = 6;
     g.lineCap = 'round';
     const wob = (x0, y0, x1, y1) => {
@@ -166,7 +186,7 @@ export function groundTexture(kind, sizeX, sizeZ, field, seed = 3) {
       const hx = X(-fl + 2), hz = Z(fw + 1.2);
       for (let i = 0; i < 6; i++) g.strokeRect(hx + i * 0.6 * sx, hz, 0.6 * sx, 0.6 * sz);
     }
-    if (kind === 'dirt') {
+    if (kind === 'dirt' || kind === 'sand') {
       g.lineWidth = 8;
       for (const s of [-1, 1]) {
         wob(X(s * fl), Z(-fw + 0.5), X(s * fl), Z(fw - 0.5));

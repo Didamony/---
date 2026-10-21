@@ -1,4 +1,4 @@
-// الأماكن: الحارة، الحوش الواسع، حوش المدرسة، السطح
+// الأماكن: الحارة، الحوش الواسع، حوش المدرسة، السطح (والباقي في maps2.js)
 import * as THREE from 'three';
 import { mat } from '../actors/character.js';
 import { makeRng } from '../core/util.js';
@@ -9,6 +9,7 @@ import {
 } from './props.js';
 import { MAPS } from '../game/config.js';
 import { mergeStatic } from '../render/merge.js';
+import { buildMicrobus, buildMosque, buildBeach, buildMarket, extraGoal } from './maps2.js';
 
 function newCtx(def) {
   return {
@@ -38,7 +39,7 @@ function newCtx(def) {
   };
 }
 
-function ground(ctx, kind, sx, sz, seed) {
+export function ground(ctx, kind, sx, sz, seed) {
   const def = ctx.def;
   const t = groundTexture(kind, sx, sz, def, seed);
   const g = new THREE.Mesh(new THREE.PlaneGeometry(sx, sz), new THREE.MeshStandardMaterial({ map: t, roughness: 1 }));
@@ -49,7 +50,7 @@ function ground(ctx, kind, sx, sz, seed) {
   return g;
 }
 
-function goals(ctx) {
+export function goals(ctx) {
   const d = ctx.def;
   const gx = d.goal.type === 'chalk' ? d.halfL + 1 : d.halfL - 0.4;
   for (const side of [-1, 1]) {
@@ -58,12 +59,13 @@ function goals(ctx) {
     else if (d.goal.type === 'slippers') slippersGoal(ctx, x, d.goal.hw);
     else if (d.goal.type === 'frame') frameGoal(ctx, x, d.goal.hw, d.goal.h, side);
     else if (d.goal.type === 'chalk') chalkGoal(ctx, x, d.goal.hw, d.goal.h, -side);
+    else extraGoal(ctx, d.goal.type, x, d.goal.hw);
     // side هو الناحية؛ الفريق اللي بيدافع عن الجون ده
     ctx.goals.push({ side, x, hw: d.goal.hw, h: d.goal.h, type: d.goal.type });
   }
 }
 
-function seated(ctx, x, z, rotY, kind = 'kid') {
+export function seated(ctx, x, z, rotY, kind = 'kid') {
   ctx.spectators.push({ pos: new THREE.Vector3(x, 0, z), rotY, kind });
 }
 
@@ -444,14 +446,14 @@ function buildRoof(ctx) {
   goals(ctx);
 }
 
-const BUILDERS = { alley: buildAlley, yard: buildYard, school: buildSchool, roof: buildRoof };
+const BUILDERS = { alley: buildAlley, yard: buildYard, school: buildSchool, roof: buildRoof, microbus: buildMicrobus, mosque: buildMosque, beach: buildBeach, market: buildMarket };
 
 export function buildMap(id) {
   const def = MAPS[id];
   const ctx = newCtx(def);
   BUILDERS[id](ctx);
   // أرض بعيدة عشان ما يبانش فراغ ورا السور القريب
-  const outerColor = { alley: '#5f5950', yard: '#7a6a50', school: '#8a857a', roof: '#6a5f52' }[id];
+  const outerColor = { alley: '#5f5950', yard: '#7a6a50', school: '#8a857a', roof: '#6a5f52', microbus: '#5f5950', mosque: '#8a857a', beach: '#c8b088', market: '#5f5950' }[id];
   const outer = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: outerColor, roughness: 1 }));
   outer.rotation.x = -Math.PI / 2;
   outer.position.y = id === 'roof' ? -14 : -0.02;

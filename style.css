@@ -112,12 +112,15 @@ button { font-family: inherit; }
 .seg { display: flex; flex-wrap: wrap; gap: 6px; }
 .panel .seg button { font-size: 15px; padding: 7px 14px; background: var(--panel2); box-shadow: none; border: 2px solid transparent; }
 .panel .seg button.on, .teambtn.on, .mapcard.on { border-color: var(--yellow); background: rgba(255,210,63,0.16); }
-.maps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.maps { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+@media (max-width: 1000px), (max-height: 560px) { .maps { grid-template-columns: repeat(4, 1fr); } }
 .mapcard { display: flex; flex-direction: column; gap: 3px; padding: 8px; background: var(--panel2); box-shadow: none; border: 2px solid transparent; font-size: 16px; }
 .mapcard b { font-size: 19px; }
 .mapcard small { font-size: 12px; color: rgba(255,255,255,0.7); font-weight: 400; line-height: 1.5; }
 .mapcard em { font-style: normal; font-size: 12px; color: var(--yellow); }
-.mc-art { height: 74px; border-radius: 8px; background-size: cover; position: relative; overflow: hidden; }
+.maps .mapcard small { display: none; }
+.mapdesc { margin: 8px 2px 0; font-size: 14px; color: rgba(255,255,255,0.75); min-height: 1.5em; }
+.mc-art { height: 56px; border-radius: 8px; background-size: cover; position: relative; overflow: hidden; }
 .mc-alley { background: linear-gradient(180deg, #c9a982 0 45%, #7d766a 45% 100%); }
 .mc-alley::after { content: ''; position: absolute; left: 20%; right: 20%; top: 18%; height: 16%; background: repeating-linear-gradient(90deg, #3d4a52 0 12px, transparent 12px 26px); }
 .mc-yard { background: linear-gradient(180deg, #bdb3a0 0 30%, #a58a64 30% 100%); }
@@ -126,6 +129,14 @@ button { font-family: inherit; }
 .mc-school::after { content: ''; position: absolute; left: 0; right: 0; top: 10%; height: 25%; background: repeating-linear-gradient(90deg, #2f6ea8 0 10px, transparent 10px 22px); }
 .mc-roof { background: linear-gradient(180deg, #4f8fd0 0 35%, #9b9488 35% 100%); }
 .mc-roof::after { content: ''; position: absolute; left: 10%; right: 10%; top: 28%; height: 4px; background: repeating-linear-gradient(90deg, #ff4455 0 6px, #44dd66 6px 12px, #4488ff 12px 18px, #ffcc33 18px 24px); }
+.mc-microbus { background: linear-gradient(180deg, #c4a07a 0 40%, #6f695f 40% 100%); }
+.mc-microbus::after { content: ''; position: absolute; left: 12%; width: 34%; top: 30%; height: 34%; background: linear-gradient(180deg, #f2efe6 0 40%, #2a3540 40% 62%, #f2efe6 62% 82%, #2a63c8 82%); border-radius: 6px 10px 3px 3px; box-shadow: 70px 6px 0 -2px #efeadc; }
+.mc-mosque { background: linear-gradient(180deg, #9cc7e8 0 22%, #e6dcc4 22% 58%, #b9b3a6 58% 100%); }
+.mc-mosque::after { content: ''; position: absolute; left: 38%; width: 24%; top: 4%; height: 26%; background: #d8ccb0; border-radius: 50% 50% 0 0; box-shadow: 52px -6px 0 -8px #e8dcc0; }
+.mc-beach { background: linear-gradient(180deg, #9cc7e8 0 22%, #2a7f96 22% 44%, #f4f8f8 44% 47%, #d8bf8c 47% 100%); }
+.mc-beach::after { content: ''; position: absolute; left: 18%; top: 36%; width: 0; height: 0; border-left: 18px solid transparent; border-right: 18px solid transparent; border-bottom: 12px solid #e05a30; box-shadow: 0 0 0 0 transparent; filter: drop-shadow(70px 4px 0 #2a63c8); }
+.mc-market { background: linear-gradient(180deg, #b98d6a 0 34%, #7d766a 34% 100%); }
+.mc-market::after { content: ''; position: absolute; left: 6%; right: 6%; top: 30%; height: 14%; background: repeating-linear-gradient(90deg, #c8322a 0 8px, #f2efe6 8px 16px, #2f8f46 16px 24px, #f2efe6 24px 32px); }
 .teams { display: flex; flex-wrap: wrap; gap: 6px; }
 .teambtn { font-size: 14px; padding: 6px 12px; background: var(--panel2); box-shadow: none; border: 2px solid transparent; display: flex; align-items: center; gap: 6px; }
 .teambtn span { width: 14px; height: 14px; border-radius: 4px; display: inline-block; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.4); }
@@ -227,7 +238,7 @@ button { font-family: inherit; }
 #touchedit .actions { margin-top: 8px; }
 #touchedit .actions button { font-size: 15px; padding: 7px 16px; }
 @media (max-width: 800px) {
-  .maps { grid-template-columns: repeat(2, 1fr); }
+  .maps { grid-template-columns: repeat(4, 1fr); }
   .ctrl-grid { grid-template-columns: 1fr; }
   .meters { width: 150px; }
   .mapname, .keys { display: none; }
@@ -396,3 +407,12 @@ html.rot .creator .cr-body { gap: 10px; }
 .betres.win { background: rgba(70,200,110,0.18); color: #8ef0a8; }
 .betres.lose { background: rgba(230,80,60,0.18); color: #ffb0a0; }
 @media (max-height: 560px) { .betcard { padding: 8px 6px; } .betcard .bi { font-size: 26px; } .bq { margin-bottom: 8px; font-size: 15px; } }
+@media (max-height: 560px) {
+  .mapcard { padding: 5px; gap: 1px; }
+  .mapcard b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mc-art { height: 26px; }
+  .mapdesc { font-size: 12px; margin-top: 4px; }
+}
+html.rot .mapcard { padding: 5px; gap: 1px; }
+html.rot .mapcard b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.rot .mc-art { height: 26px; }

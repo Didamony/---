@@ -265,6 +265,9 @@ export class Environment {
       fl.children.forEach((c, i) => { c.rotation.y = Math.sin(this.t * 3 + c.position.x * 2) * 0.25; });
     }
     for (const c of this.ctx.clothes) c.rotation.x = Math.sin(this.t * 1.7 + c.position.x) * 0.12;
+    // البحر بيتحرك والموج بيروح وييجي
+    if (this.ctx.extras.sea) { this.ctx.extras.sea.offset.x = this.t * 0.01; this.ctx.extras.sea.offset.y = Math.sin(this.t * 0.4) * 0.02; }
+    if (this.ctx.extras.foam) { const f = this.ctx.extras.foam; f.position.z = -this.ctx.bounds.maxZ - 1.6 + Math.sin(this.t * 0.8) * 0.5; f.material.opacity = 0.35 + 0.3 * Math.max(0, Math.sin(this.t * 0.8)); }
     if (this.rain) {
       const { n, pos, speed } = this.rainData;
       for (let i = 0; i < n; i++) {

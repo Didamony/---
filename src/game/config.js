@@ -33,9 +33,41 @@ export const MAPS = {
     goal: { type: 'slippers', hw: 1.0, h: 0.9 },
     teamSize: 3,
   },
+  microbus: {
+    id: 'microbus',
+    name: 'موقف الميكروباص',
+    desc: 'الجون كاوتشين، والميكروباصات راكنة حواليك. التباع بيزعق والتوكتوك معدّي.',
+    halfL: 17.5, halfW: 6.2,
+    goal: { type: 'tires', hw: 1.4, h: 1.1 },
+    teamSize: 4,
+  },
+  mosque: {
+    id: 'mosque',
+    name: 'قدام الجامع',
+    desc: 'بعد صلاة العصر، الكبار قاعدين على الدكة. الجون شبشبين، واوعى الكورة تخبط في الباب!',
+    halfL: 15.5, halfW: 6.4,
+    goal: { type: 'slippers', hw: 1.2, h: 1.0 },
+    teamSize: 4,
+  },
+  beach: {
+    id: 'beach',
+    name: 'البلاج',
+    desc: 'رملة تقيلة بتهدّي الكورة، والجون شنطتين بحر. البحر ورا والشماسي في كل حتة.',
+    halfL: 19, halfW: 8.5,
+    goal: { type: 'bags', hw: 1.6, h: 1.2 },
+    teamSize: 5,
+  },
+  market: {
+    id: 'market',
+    name: 'ساحة السوق',
+    desc: 'بين فرشات الخضار والسمك. الجون أقفاص برتقان، ولمبات السوق منورة بالليل.',
+    halfL: 16.5, halfW: 5.6,
+    goal: { type: 'crates', hw: 1.3, h: 1.1 },
+    teamSize: 4,
+  },
 };
 
-export const MAP_ORDER = ['alley', 'yard', 'school', 'roof'];
+export const MAP_ORDER = ['alley', 'yard', 'school', 'roof', 'microbus', 'mosque', 'beach', 'market'];
 
 export const TEAMS = {
   home: { name: 'عيال الحارة', short: 'الحُمر', colors: ['#c8322a', '#d0342a', '#b81f1f', '#e04a2f', '#a82424'], accent: '#ffffff', ui: '#c8322a' },
@@ -69,6 +101,9 @@ export const LINES = {
   goalBricks: ['دخلت بين الطوبتين!', 'جون نضيف بين الطوب!'],
   goalSlippers: ['دخلت بين الشبشبين!'],
   goalChalk: ['خبطت جوه الطباشير!'],
+  goalTires: ['دخلت بين الكاوتشين!'],
+  goalCrates: ['بين الأقفاص بالظبط!'],
+  goalBags: ['دخلت بين الشنطتين!'],
   miss: ['ياااه! جنب الطوبة!', 'كانت هتدخل!', 'طاشت!', 'ده إنت تشوط من البيت أحسن!'],
   foul: ['فاوووول!', 'فاول يا عم!', 'إيه ده؟! ده كسره!', 'حرام عليك!'],
   hurt: ['آآآه يا رجلي!', 'آه يا ركبتي!', 'هو أنا عملتلك إيه؟!', 'رجلي اتكسرت!'],
@@ -117,8 +152,8 @@ export const SHOP = [
 
 export const TOURNAMENT = [
   { map: 'alley', time: 'day', opp: 'away', title: 'الدور الأول: ماتش الحارة' },
-  { map: 'yard', time: 'night', opp: 'green', title: 'دور الستاشر' },
-  { map: 'school', time: 'sunset', opp: 'yellow', title: 'دور التمانية' },
+  { map: 'market', time: 'night', opp: 'green', title: 'دور الستاشر' },
+  { map: 'beach', time: 'sunset', opp: 'yellow', title: 'دور التمانية' },
   { map: 'roof', time: 'night', weather: 'rain', opp: 'black', title: 'نص النهائي' },
   { map: 'alley', time: 'night', opp: 'white', title: 'النهائي: كأس الحتة' },
 ];

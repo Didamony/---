@@ -113,7 +113,7 @@ export class UI {
     const setup = add('setup', `
       <div class="panel wide">
         <h2 class="ttl">ماتش جديد</h2>
-        <div class="sec"><h3>المكان</h3><div class="maps"></div></div>
+        <div class="sec"><h3>المكان</h3><div class="maps"></div><p class="mapdesc"></p></div>
         <div class="row">
           <div class="sec"><h3>الوقت</h3><div class="seg" data-k="time"><button data-v="day">☀️ الضهر</button><button data-v="sunset">🌇 المغرب</button><button data-v="night">🌙 بالليل</button></div></div>
           <div class="sec"><h3>الجو</h3><div class="seg" data-k="weather"><button data-v="clear">صافي</button><button data-v="dust">🌪️ خماسين</button><button data-v="rain">🌧️ مطر</button></div></div>
@@ -322,6 +322,7 @@ export class UI {
   refreshSetup() {
     const s = this.setupSel, sc = this.screens.setup;
     sc.querySelectorAll('.mapcard').forEach((b) => b.classList.toggle('on', b.dataset.v === s.map));
+    $('.mapdesc', sc).textContent = MAPS[s.map].desc;
     sc.querySelectorAll('.seg').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === s[seg.dataset.k])));
     sc.querySelectorAll('.teams').forEach((w) => w.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === s[w.dataset.k])));
     $('.seg[data-k="diff"]', sc).parentElement.style.display = s.versus ? 'none' : '';

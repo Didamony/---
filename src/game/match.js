@@ -66,10 +66,10 @@ export class Match {
     this.env = new Environment(this.scene, this.ctx, { night: this.night, sunset: this.sunset, weather: this.weather, quality: game.quality, renderer: game.renderer });
     this.ball = new Ball(this.scene);
     this.ball.setNight(this.night);
-    this.ball.friction = (opts.mapId === 'yard' ? 1.15 : opts.mapId === 'school' ? 0.75 : 0.85) * (this.weather === 'rain' ? 0.62 : 1);
+    this.ball.friction = ({ yard: 1.15, school: 0.75, beach: 1.7, mosque: 0.8 }[opts.mapId] || 0.85) * (this.weather === 'rain' ? 0.62 : 1);
     this.ball.onBounce = (s) => {
       if (s > 1.5) audio.play('bounce', s);
-      if (s > 2 && opts.mapId === 'yard' && this.weather !== 'rain') this.fx.puff(this.ball.pos, { n: 2, size: 0.4, life: 0.6, up: 0.3, opacity: 0.5 });
+      if (s > 2 && (opts.mapId === 'yard' || opts.mapId === 'beach') && this.weather !== 'rain') this.fx.puff(this.ball.pos, { n: 2, size: 0.4, life: 0.6, up: 0.3, opacity: 0.5 });
       // مطر: رشة مية لما الكورة تخبط في الأرض
       if (s > 1.2 && this.weather === 'rain') this.fx.puff(this.ball.pos, { n: 4, size: 0.25, life: 0.4, up: 0.6, opacity: 0.45, color: '#c8d4e0' });
     };
@@ -1409,7 +1409,7 @@ export class Match {
     this.pendingPass = null;
     this.setState('goal');
     for (const p of this.allPlayers) { p.releasePull(); }
-    const lines = g.type === 'bricks' ? LINES.goalBricks : g.type === 'slippers' ? LINES.goalSlippers : g.type === 'chalk' ? LINES.goalChalk : [];
+    const lines = { bricks: LINES.goalBricks, slippers: LINES.goalSlippers, chalk: LINES.goalChalk, tires: LINES.goalTires, crates: LINES.goalCrates, bags: LINES.goalBags }[g.type] || [];
     this.ui.banner(pick(LINES.goal), own ? `جون في نفسه! (${lt.name})` : `${this.scorer ? this.scorer.name : ''} ${lines.length ? '• ' + pick(lines) : ''}`, 'goal', team);
     audio.play('cheer');
     this.buzz(this.humanTeams[team] ? [120, 60, 120, 60, 240] : [200]);
@@ -1599,7 +1599,7 @@ export class Match {
   }
 
   onFootstep(p, run) {
-    if (this.opts.mapId === 'yard' && run > 0.6 && Math.random() < 0.35) {
+    if ((this.opts.mapId === 'yard' || this.opts.mapId === 'beach') && run > 0.6 && Math.random() < 0.35) {
       this.fx.puff(tmp.set(p.pos.x, 0.05, p.pos.z), { n: 1, size: 0.35, life: 0.5, up: 0.2, opacity: 0.45 });
     }
   }
