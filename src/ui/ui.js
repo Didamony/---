@@ -270,7 +270,13 @@ export class UI {
     const b2 = el('button', '', '🛒 المحل'); b2.onclick = () => { audio.play('click'); this.showShop(); };
     act.append(b1, b2);
     if (!T.s.done) { const b3 = el('button', 'big go', 'العب الماتش الجاي'); b3.onclick = () => { audio.play('click'); this.game.startTourneyMatch(); }; act.append(b3); }
-    const b4 = el('button', 'danger', 'ابدأ البطولة من الأول'); b4.onclick = () => { if (confirm('متأكد؟ هتخسر كل التقدم والفلوس.')) { T.reset(); this.showTourney(); } }; act.append(b4);
+    const b4 = el('button', 'danger', 'ابدأ البطولة من الأول');
+    b4.onclick = () => {
+      // دوسة أولى تسأل، والتانية تأكد
+      if (!b4.dataset.sure) { b4.dataset.sure = '1'; b4.textContent = 'متأكد؟ هتخسر الفلوس والتقدم.. دوس تاني'; return; }
+      T.reset(); this.showTourney();
+    };
+    act.append(b4);
     this.show('tourney');
   }
 
