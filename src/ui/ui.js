@@ -237,6 +237,7 @@ export class UI {
 
     add('pause', `
       <div class="panel small">
+        <img class="wordimg" src="assets/logo/wordmark-800.png" alt="كرة الشوارع">
         <h2 class="ttl">استراحة</h2>
         <div class="menu-btns">
           <button data-a="resume" class="big">كمّل</button>
@@ -248,11 +249,11 @@ export class UI {
       </div>`);
     this.screens.pause.querySelectorAll('button').forEach((b) => b.onclick = () => { audio.play('click'); this.pauseAction(b.dataset.a); });
 
-    add('result', `<div class="panel"><div class="res"></div><div class="actions"></div></div>`);
-    add('tourney', `<div class="panel wide"><h2 class="ttl">🏆 كأس الحتة</h2><div class="tinfo"></div><div class="ladder"></div><div class="actions"></div></div>`);
+    add('result', `<div class="panel"><img class="wordimg" src="assets/logo/wordmark-800.png" alt="كرة الشوارع"><div class="res"></div><div class="actions"></div></div>`);
+    add('tourney', `<div class="panel wide"><div class="thead"><img class="badgeimg" src="assets/logo/badge-400.png" alt=""><h2 class="ttl">🏆 كأس الحتة</h2></div><div class="tinfo"></div><div class="ladder"></div><div class="actions"></div></div>`);
     add('shop', `<div class="panel"><h2 class="ttl">🛒 محل عم سيد</h2><div class="money"></div><div class="items"></div><div class="actions"><button class="back big">خلصت</button></div></div>`);
     $('#shop .back').onclick = () => { audio.play('click'); this.showTourney(); };
-    add('loading', `<div class="loading"><img class="logoimg pulse" src="assets/logo/icon-512.png" alt="كرة الشوارع"><p>بنجهّز الحارة...</p></div>`);
+    add('loading', `<div class="loading"><img class="splashimg" src="assets/logo/graffiti-640.png" alt="كرة الشوارع"><p>بنجهّز الحارة...</p></div>`);
   }
 
   show(id) {

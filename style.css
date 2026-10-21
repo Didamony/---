@@ -282,3 +282,9 @@ button { font-family: inherit; }
 @keyframes logopulse { 50% { transform: rotate(-3deg) scale(1.05); } }
 .loading p { margin-top: 18px; }
 @media (max-height: 560px) { .logoimg { width: 150px; } .logoimg.pulse { width: 140px; } }
+
+.splashimg { width: min(340px, 70vw); height: auto; border-radius: 12%; display: block; margin: 0 auto; filter: drop-shadow(0 14px 30px rgba(0,0,0,0.7)); animation: logopulse 1.4s ease-in-out infinite; }
+.thead { display: flex; align-items: center; gap: 14px; }
+.badgeimg { width: 92px; height: 92px; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5)); }
+.wordimg { display: block; width: min(300px, 80%); height: auto; margin: -4px auto 10px; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.5)); }
+@media (max-height: 560px) { .splashimg { width: 200px; } .badgeimg { width: 60px; height: 60px; } .wordimg { width: 200px; margin-bottom: 4px; } }
