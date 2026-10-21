@@ -770,10 +770,12 @@ export class Match {
       } else {
         p.fwd(tmp2);
         const sp = Math.hypot(p.vel.x, p.vel.z);
-        const touch = sp > 1 ? Math.abs(Math.sin(p.anim.phase * 0.5)) * 0.16 : 0;
-        const off = 0.4 + touch + Math.min(0.15, sp * 0.02);
+        // لمسة كل خطوتين: الكورة تبعد عن الرجل وهو يلحقها (أبعد كل ما يجري أسرع)
+        const u = ((p.anim.phase % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) / (Math.PI * 2);
+        const amp = clamp((sp - 1.2) * 0.13, 0, 0.8);
+        const off = 0.36 + amp * (1 - u) * (1 - u * 0.3);
         const tx = p.pos.x + tmp2.x * off, tz = p.pos.z + tmp2.z * off;
-        const k = 1 - Math.exp(-22 * dt);
+        const k = 1 - Math.exp(-(sp > 1.5 ? 11 : 22) * dt);
         ball.pos.x += (tx - ball.pos.x) * k;
         ball.pos.z += (tz - ball.pos.z) * k;
         ball.pos.y = ball.r;

@@ -5,6 +5,21 @@ import { TUNE } from '../game/config.js';
 import { clamp, dampAngle, randRange, chance } from '../core/util.js';
 
 const V = new THREE.Vector3();
+
+let _cg, _cm;
+function contactGeo() { return _cg || (_cg = new THREE.CircleGeometry(0.55, 24)); }
+function contactMat() {
+  if (_cm) return _cm;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(0,0,0,0.55)'); gr.addColorStop(0.5, 'rgba(0,0,0,0.25)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c);
+  _cm = new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false });
+  return _cm;
+}
 const V2 = new THREE.Vector3();
 
 export class Player {
@@ -49,6 +64,11 @@ export class Player {
     this.ring.rotation.x = -Math.PI / 2;
     this.ring.renderOrder = 2;
     match.scene.add(this.ring);
+    // ضل ناعم تحت الرجلين (زي الإضاءة المحيطة) عشان اللعيب يبان واقف على الأرض
+    this.contact = new THREE.Mesh(contactGeo(), contactMat());
+    this.contact.rotation.x = -Math.PI / 2;
+    this.contact.renderOrder = 1;
+    match.scene.add(this.contact);
     this.marker = null;
     this.anim.onStep = (run) => match.onFootstep(this, run);
   }
@@ -95,6 +115,7 @@ export class Player {
   show(v) {
     this.root.visible = v;
     this.ring.visible = v;
+    if (this.contact) this.contact.visible = v;
   }
 
   // ------------------------------------------------------------ تحديث
@@ -230,6 +251,12 @@ export class Player {
     this.root.position.copy(this.pos);
     this.root.rotation.y = this.facing;
     this.ring.position.set(this.pos.x, 0.02, this.pos.z);
+    if (this.contact) {
+      this.contact.position.set(this.pos.x, 0.015, this.pos.z);
+      const down = this.state === 'fallen' || this.state === 'slide' || this.state === 'dive';
+      this.contact.scale.set(down ? 1.6 : 1, down ? 1.6 : 1, 1);
+      this.contact.visible = this.root.visible;
+    }
   }
 
   // ------------------------------------------------------------ الحركات
@@ -453,6 +480,7 @@ export class Player {
   dispose() {
     this.match.scene.remove(this.root);
     this.match.scene.remove(this.ring);
+    this.match.scene.remove(this.contact);
   }
 }
 

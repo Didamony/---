@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { glowTexture, coneTexture } from '../render/textures.js';
 import { randRange } from '../core/util.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { Sky } from 'three/addons/objects/Sky.js';
 
 let envTex = null;
 function roomEnv(renderer) {
@@ -60,7 +61,21 @@ export class Environment {
     this.flickers = [];
     this.t = 0;
 
-    this.group.add(skyDome(night));
+    if (night) this.group.add(skyDome(night));
+    else {
+      // سما حقيقية بتشتت الضوء زي الجو بتاعنا (شوية تراب في الهوا)
+      const sky = new Sky();
+      sky.scale.setScalar(450);
+      const u = sky.material.uniforms;
+      u.turbidity.value = 7;
+      u.rayleigh.value = 1.6;
+      u.mieCoefficient.value = 0.006;
+      u.mieDirectionalG.value = 0.8;
+      u.sunPosition.value.set(14, 30, 16).normalize();
+      sky.material.depthWrite = false;
+      sky.renderOrder = -10;
+      this.group.add(sky);
+    }
     // إضاءة محيطة ناعمة (انعكاسات خفيفة على الحاجات)
     if (renderer) {
       scene.environment = roomEnv(renderer);

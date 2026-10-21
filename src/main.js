@@ -4,6 +4,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { Match } from './game/match.js';
 import { UI } from './ui/ui.js';
 import { Tournament } from './game/tournament.js';
@@ -25,8 +26,8 @@ class Game {
     this.container = document.getElementById('view');
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
+    this.renderer.toneMapping = THREE.AgXToneMapping;
+    this.renderer.toneMappingExposure = 1.15;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.container.appendChild(this.renderer.domElement);
@@ -93,16 +94,28 @@ class Game {
     this.renderer.setPixelRatio(pr);
     this.renderer.shadowMap.enabled = q !== 'low' || !night;
     this.composer = null;
-    if (night && q !== 'low' && this.match) {
+    const demo = this.match && this.match.opts.demo;
+    // عالية: ضل ناعم في الأركان وتحت الرجلين (AO). بالليل: هالة النور
+    const ao = false; // جرّبنا GTAO وعمل مربعات غلط تحت اللعيبة؛ الضل الناعم تحت كل لعيب بيعمل الشغل
+    void demo;
+    if ((night && q !== 'low') || ao) {
       const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
       const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: q === 'high' ? 4 : 0 });
       const c = new EffectComposer(this.renderer, rt);
       c.addPass(new RenderPass(this.match.scene, this.camera));
-      c.addPass(new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.5, 0.5, 0.9));
+      if (ao) {
+        const g = new GTAOPass(this.match.scene, this.camera, size.x, size.y);
+        g.output = GTAOPass.OUTPUT.Default;
+        g.blendIntensity = 0.85;
+        g.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.5, thickness: 1.2, scale: 1.0, samples: 12 });
+        c.addPass(g);
+      }
+      if (night) c.addPass(new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.5, 0.5, 0.9));
       c.addPass(new OutputPass());
       this.composer = c;
     }
   }
+
 
   resize() {
     const w = window.innerWidth, h = window.innerHeight;

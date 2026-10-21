@@ -45,6 +45,7 @@ function ground(ctx, kind, sx, sz, seed) {
   g.rotation.x = -Math.PI / 2;
   g.receiveShadow = true;
   ctx.root.add(g);
+  ctx.groundMesh = g;
   return g;
 }
 
@@ -459,6 +460,18 @@ export function buildMap(id) {
   ctx.root.add(ctx.static);
   ctx.root.add(ctx.dynamic);
   for (const o of [...ctx.nightOnly, ...ctx.dayOnly]) o.userData.keep = true;
+  // تضاريس للحيطان والأرض من نفس الصورة (المحارة والشقوق والأسفلت يبقى ليهم بروز)
+  const seen = new Set();
+  ctx.root.traverse((o) => {
+    if (!o.isMesh) return;
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+      if (!m || seen.has(m) || !m.isMeshStandardMaterial || !m.map || m.bumpMap || m.transparent) continue;
+      seen.add(m);
+      m.bumpMap = m.map;
+      m.bumpScale = o === ctx.groundMesh ? 3.5 : 2.5;
+      m.needsUpdate = true;
+    }
+  });
   mergeStatic(ctx.static);
   ctx.static.traverse((o) => {
     if (o.isMesh) { o.receiveShadow = true; if (!o.userData.dyn) { o.matrixAutoUpdate = false; o.updateMatrix(); } }

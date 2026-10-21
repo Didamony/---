@@ -424,9 +424,43 @@ export function buildCharacter(look) {
 
 // ---------------------------------------------------------------- جسم واحد بهيكل عظمي
 // كل الأجزاء بتتجمع في ميش واحد متربط بالعضم: draw call واحد للشخصية بدل ~٤٥
-const bodyMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 });
-const skinMatShared = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0 });
-const skirtMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
+// نسيج القماش: خيوط ناعمة + كرمشة، ومسام خفيفة للجلد (مرسومين بالكود)
+function detailTex(kind) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  let seed = kind === 'cloth' ? 7 : 13;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  g.fillStyle = '#f2f2f2';
+  g.fillRect(0, 0, 256, 256);
+  if (kind === 'cloth') {
+    // كرمشة
+    for (let i = 0; i < 40; i++) {
+      const x = rnd() * 256, y = rnd() * 256, w = 30 + rnd() * 90, a = rnd() * Math.PI;
+      const gr = g.createLinearGradient(x, y, x + Math.cos(a) * w, y + Math.sin(a) * w);
+      gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(0.5, `rgba(0,0,0,${0.06 + rnd() * 0.08})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.strokeStyle = gr; g.lineWidth = 4 + rnd() * 8; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + rnd() * 30, y + rnd() * 30, x + Math.cos(a) * w, y + Math.sin(a) * w); g.stroke();
+    }
+    // خيوط
+    for (let y = 0; y < 256; y += 2) { g.fillStyle = `rgba(0,0,0,${0.035 + (y % 4 ? 0.02 : 0)})`; g.fillRect(0, y, 256, 1); }
+    for (let x = 0; x < 256; x += 2) { g.fillStyle = 'rgba(255,255,255,0.03)'; g.fillRect(x, 0, 1, 256); }
+  } else {
+    for (let i = 0; i < 9000; i++) { g.fillStyle = `rgba(${rnd() < 0.5 ? '90,40,30' : '255,230,220'},${rnd() * 0.06})`; g.fillRect(rnd() * 256, rnd() * 256, 1 + rnd(), 1 + rnd()); }
+    for (let i = 0; i < 25; i++) { const x = rnd() * 256, y = rnd() * 256, r = 10 + rnd() * 40; const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(160,70,60,0.05)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(kind === 'cloth' ? 3 : 2, kind === 'cloth' ? 3 : 2);
+  t.anisotropy = 4;
+  return t;
+}
+const clothTex = detailTex('cloth');
+const skinTex = detailTex('skin');
+const bodyMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0, map: clothTex, bumpMap: clothTex, bumpScale: 2.2 });
+const skinMatShared = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.52, metalness: 0, map: skinTex, bumpMap: skinTex, bumpScale: 0.6 });
+const skirtMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0, side: THREE.DoubleSide, map: clothTex, bumpMap: clothTex, bumpScale: 2.2 });
 
 function bakeSkinned(root) {
   root.updateMatrixWorld(true);
@@ -443,7 +477,8 @@ function bakeSkinned(root) {
     while (b && !b.isBone) b = b.parent;
     if (!b) return;
     let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
-    for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
+    for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') g.deleteAttribute(k);
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
     rel.multiplyMatrices(inv, o.matrixWorld);
     g.applyMatrix4(rel);
     const n = g.attributes.position.count;
