@@ -352,3 +352,31 @@ html.rot .wordimg { width: 200px; margin-bottom: 4px; }
 #hud.replaying .scoreboard, #hud.replaying .meters, #hud.replaying .keys, #hud.replaying .who, #hud.replaying .mapname, #hud.replaying .pausebtn { display: none; }
 #hud.replaying::before, #hud.replaying::after { content: ''; position: absolute; left: 0; right: 0; height: 9%; background: #000; }
 #hud.replaying::before { top: 0; } #hud.replaying::after { bottom: 0; }
+
+/* اعمل لاعيبك */
+.creator .cr-body { display: flex; gap: 18px; align-items: stretch; }
+.cr-prev { position: relative; flex: 0 0 260px; height: 380px; border-radius: 14px; background: radial-gradient(ellipse at 50% 85%, rgba(255,210,63,0.22), transparent 60%), linear-gradient(#2a2420, #15110e); overflow: hidden; touch-action: none; }
+.cr-prev canvas { width: 100%; height: 100%; display: block; cursor: grab; }
+.cr-prev small { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; color: rgba(255,255,255,0.5); font-size: 12px; pointer-events: none; }
+.cr-prev.nogl canvas { display: none; }
+.cr-tag { position: absolute; top: 10px; right: 10px; left: 10px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+.cr-tag b { font-size: 20px; font-weight: 900; }
+.cr-tag span { font-size: 26px; font-weight: 900; color: var(--yellow); }
+.cr-opts { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; align-content: start; }
+.cr-opts > .row, .cr-opts > .sec:nth-child(2), .cr-opts .cr-note { grid-column: 1 / -1; }
+.cr-opts .sec { margin: 0; }
+.cr-opts input { font: inherit; font-size: 16px; padding: 7px 12px; border-radius: 10px; border: 2px solid var(--line); background: var(--panel2); color: #fff; width: 170px; }
+.cr-opts .cr-num { width: 80px; direction: ltr; text-align: center; }
+.cr-opts input:focus { outline: none; border-color: var(--yellow); }
+.panel .seg button.sw { width: 34px; height: 34px; padding: 0; border-radius: 50%; border: 3px solid transparent; }
+.panel .seg button.sw.on { border-color: var(--yellow); }
+.cr-note { margin: 2px 0 0; font-size: 13px; color: rgba(255,255,255,0.55); }
+@media (max-width: 800px), (max-height: 560px) {
+  .creator .cr-body { gap: 10px; }
+  .cr-prev { flex-basis: 170px; height: auto; min-height: 220px; }
+  .cr-opts { display: flex; flex-direction: column; gap: 4px; max-height: 62vh; overflow-y: auto; }
+  .cr-opts h3 { font-size: 13px; margin-bottom: 3px; }
+  .panel .creator .seg button, .creator .seg button { font-size: 13px; padding: 5px 9px; }
+  .panel .seg button.sw { width: 28px; height: 28px; }
+}
+html.rot .creator .cr-body { gap: 10px; }

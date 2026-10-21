@@ -15,6 +15,7 @@ import { audio } from '../core/audio.js';
 import { crackedGlassTexture } from '../render/textures.js';
 import { endInputFrame } from '../core/input.js';
 import { Recorder, Replay } from './replay.js';
+import { loadProfile, profileLook } from './profile.js';
 
 const tmp = new THREE.Vector3();
 const tmp2 = new THREE.Vector3();
@@ -77,15 +78,19 @@ export class Match {
     let ni = 0;
     this.teams = [[], []];
     const seed = Math.floor(Math.random() * 1000);
+    const prof = loadProfile();
     for (let t = 0; t < 2; t++) {
       const team = TEAMS[this.teamKeys[t]];
       const mods = opts.mods?.[t] || {};
       for (let i = 0; i < this.def.teamSize; i++) {
         let name = names[ni++ % names.length];
-        if (t === 0 && i === 1 && this.humanTeams[0]) { name = 'حمادة'; }
-        if (name === 'حمادة' && !(t === 0 && i === 1)) name = names[ni++ % names.length];
-        const look = playerLook(team, i, seed + t * 50, { kits: !!mods.kits, shoes: !!mods.shoes, isGK: i === 0 });
-        const p = new Player(this, t, i, look, { name, number: [1, 7, 10, 9, 4, 11, 8][i % 7], isGK: i === 0 });
+        // لاعيبك اللي عملته بإيدك
+        const mine = t === 0 && i === 1 && this.humanTeams[0] && !opts.demo;
+        if (mine) name = prof.name;
+        while (!mine && (name === prof.name || name === 'حمادة')) name = names[ni++ % names.length];
+        const look = mine ? profileLook(prof, team, { kits: !!mods.kits })
+          : playerLook(team, i, seed + t * 50, { kits: !!mods.kits, shoes: !!mods.shoes, isGK: i === 0 });
+        const p = new Player(this, t, i, look, { name, number: mine ? prof.number : [1, 7, 10, 9, 4, 11, 8][i % 7], isGK: i === 0 });
         p.mods.speed = (mods.speed || 1) * (this.humanTeams[t] ? 1 : DIFFICULTY[this.difficulty].speed);
         p.mods.shot = mods.shot || 1;
         p.mods.control = mods.control || 1;

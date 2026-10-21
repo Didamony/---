@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { MAPS, MAP_ORDER, TEAMS, DIFFICULTY, SHOP, TOURNAMENT } from '../game/config.js';
 import { arNum, fmtClock } from '../core/util.js';
 import { audio } from '../core/audio.js';
+import { OPTIONS, SKIN_TONES, loadProfile, saveProfile, cleanName, profileLook } from '../game/profile.js';
+import { Preview } from './preview.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -70,12 +72,42 @@ export class UI {
         <button data-a="quick" class="big">⚽ ماتش سريع</button>
         <button data-a="tourney">🏆 البطولة: كأس الحتة</button>
         <button data-a="versus">👥 اتنين على كيبورد واحد</button>
+        <button data-a="player">🧍 اعمل لاعيبك</button>
         <button data-a="controls">🎮 التحكم</button>
         <button data-a="settings">⚙️ الإعدادات</button>
       </div>
       <div class="foot">كل الرسومات والأصوات معمولة بالكود • العب بالكيبورد أو الدراع أو الموبايل</div>
     `);
     menu.querySelectorAll('button').forEach((b) => b.onclick = () => { audio.init(); audio.play('click'); this.menuAction(b.dataset.a); });
+
+    // اعمل لاعيبك
+    const SEC = { hairStyle: 'الشعر', face: 'الوش', top: 'اللبس فوق', bottom: 'تحت', shoes: 'في رجله', height: 'الطول', build: 'الجسم' };
+    const cr = add('creator', `
+      <div class="panel wide creator">
+        <h2 class="ttl">اعمل لاعيبك</h2>
+        <div class="cr-body">
+          <div class="cr-prev"><canvas></canvas><div class="cr-tag"><b class="cr-nm"></b><span class="cr-no"></span></div><small>اسحب عشان تلفّه</small></div>
+          <div class="cr-opts">
+            <div class="row">
+              <div class="sec"><h3>اسمك</h3><input class="cr-name" maxlength="12" dir="rtl"></div>
+              <div class="sec"><h3>رقمك</h3><input class="cr-num" type="number" min="1" max="99"></div>
+            </div>
+            <div class="sec"><h3>لون البشرة</h3><div class="seg skins">${SKIN_TONES.map((c, i) => `<button data-v="${i}" class="sw" style="background:${c}"></button>`).join('')}</div></div>
+            ${Object.entries(OPTIONS).map(([k, list]) => `<div class="sec"><h3>${SEC[k]}</h3><div class="seg" data-k="${k}">${list.map(([v, t]) => `<button data-v="${v}">${t}</button>`).join('')}</div></div>`).join('')}
+            <p class="cr-note">لون هدومك بيتغير على حسب الفريق اللي بتلعب بيه</p>
+          </div>
+        </div>
+        <div class="actions"><button class="back">رجوع</button><button class="go big">احفظ</button></div>
+      </div>
+    `);
+    cr.querySelectorAll('.seg[data-k]').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.onclick = () => { audio.play('click'); this.prof[seg.dataset.k] = b.dataset.v; this.refreshCreator(true); }));
+    $('.skins', cr).querySelectorAll('button').forEach((b) => b.onclick = () => { audio.play('click'); this.prof.skin = +b.dataset.v; this.refreshCreator(true); });
+    $('.cr-name', cr).oninput = (e) => { this.prof.name = e.target.value; this.refreshCreator(false); };
+    $('.cr-num', cr).oninput = (e) => { const n = Math.round(+e.target.value); if (n >= 1 && n <= 99) { this.prof.number = n; this.refreshCreator(true); } };
+    // الكيبورد بتاع الكتابة ما يحركش اللعبة
+    cr.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => e.stopPropagation()));
+    $('.back', cr).onclick = () => { audio.play('click'); this.closeCreator(false); };
+    $('.go', cr).onclick = () => { audio.play('coin'); this.closeCreator(true); };
 
     // إعداد الماتش
     const setup = add('setup', `
@@ -273,6 +305,7 @@ export class UI {
     if (a === 'quick') { this.setupSel.versus = false; $('#setup .ttl').textContent = 'ماتش جديد'; this.show('setup'); }
     if (a === 'versus') { this.setupSel.versus = true; $('#setup .ttl').textContent = 'اتنين قصاد بعض'; this.show('setup'); }
     if (a === 'tourney') this.showTourney();
+    if (a === 'player') this.openCreator();
     if (a === 'controls') { this.controlsReturn = 'menu'; this.show('controls'); }
     if (a === 'settings') { this.settingsReturn = 'menu'; this.show('settings'); }
   }
@@ -293,6 +326,37 @@ export class UI {
     $('.seg[data-k="diff"]', sc).parentElement.style.display = s.versus ? 'none' : '';
     sc.querySelectorAll('.teams')[0].previousElementSibling.textContent = s.versus ? 'اللاعب الأول' : 'فريقك';
     sc.querySelectorAll('.teams')[1].previousElementSibling.textContent = s.versus ? 'اللاعب التاني' : 'الخصم';
+  }
+
+  openCreator() {
+    this.prof = loadProfile();
+    const cr = this.screens.creator;
+    this.show('creator');
+    if (!this.preview) {
+      try { this.preview = new Preview($('canvas', cr)); } catch (e) { $('.cr-prev', cr).classList.add('nogl'); }
+    }
+    $('.cr-name', cr).value = this.prof.name;
+    $('.cr-num', cr).value = this.prof.number;
+    this.refreshCreator(true);
+    this.preview?.start();
+  }
+
+  refreshCreator(rebuild) {
+    const p = this.prof, cr = this.screens.creator;
+    cr.querySelectorAll('.seg[data-k]').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === String(p[seg.dataset.k]))));
+    $('.skins', cr).querySelectorAll('button').forEach((b) => b.classList.toggle('on', +b.dataset.v === p.skin));
+    $('.cr-nm', cr).textContent = cleanName(p.name);
+    $('.cr-no', cr).textContent = arNum(p.number);
+    if (rebuild && this.preview) {
+      const team = TEAMS[this.setupSel?.home] || TEAMS.home;
+      this.preview.setLook(profileLook(p, team, { kits: this.game.tourney.mods().kits }));
+    }
+  }
+
+  closeCreator(save) {
+    if (save) { this.prof.name = cleanName(this.prof.name); saveProfile(this.prof); this.toast(`${this.prof.name} جاهز ينزل الملعب`); }
+    this.preview?.stop();
+    this.show('menu');
   }
 
   openTouchEditor() {
