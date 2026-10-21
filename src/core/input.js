@@ -19,6 +19,18 @@ export const KEYMAPS = {
   },
 };
 
+// لما الموبايل بالطول بنلف اللعبة ٩٠ درجة؛ دي بتحوّل إحداثيات الشاشة لإحداثيات اللعبة
+export const view = { rot: false };
+export function toLocal(x, y) { return view.rot ? [y, window.innerWidth - x] : [x, y]; }
+export function localRect(el) {
+  const r = el.getBoundingClientRect();
+  if (!view.rot) return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
+  const W = window.innerWidth;
+  return { left: r.top, right: r.bottom, top: W - r.right, bottom: W - r.left, width: r.height, height: r.width };
+}
+export const viewW = () => (view.rot ? window.innerHeight : window.innerWidth);
+export const viewH = () => (view.rot ? window.innerWidth : window.innerHeight);
+
 const keys = new Set();
 // زراير اتداس عليها واتشالت في نفس الفريم: نحسبها برضه
 const tapped = new Set();
@@ -142,11 +154,11 @@ export class TouchPad {
       if (sid !== null || this.editing) return;
       const t = e.changedTouches[0];
       sid = t.identifier;
-      const zr = zone.getBoundingClientRect();
-      const sr = stick.getBoundingClientRect();
-      cx = t.clientX; cy = t.clientY;
-      stick.style.left = (t.clientX - zr.left - sr.width / 2) + 'px';
-      stick.style.top = (t.clientY - zr.top - sr.height / 2) + 'px';
+      const zr = localRect(zone);
+      const sr = localRect(stick);
+      [cx, cy] = toLocal(t.clientX, t.clientY);
+      stick.style.left = (cx - zr.left - sr.width / 2) + 'px';
+      stick.style.top = (cy - zr.top - sr.height / 2) + 'px';
       stick.style.bottom = 'auto';
       stick.classList.add('on');
       e.preventDefault();
@@ -154,7 +166,8 @@ export class TouchPad {
     const move = (e) => {
       for (const t of e.changedTouches) {
         if (t.identifier !== sid) continue;
-        let dx = t.clientX - cx, dy = t.clientY - cy;
+        const [lx, ly] = toLocal(t.clientX, t.clientY);
+        let dx = lx - cx, dy = ly - cy;
         const l = Math.hypot(dx, dy);
         const R = this.R;
         if (l > R) { dx *= R / l; dy *= R / l; }
@@ -237,22 +250,24 @@ export class TouchPad {
       if (!t) return;
       e.preventDefault();
       const key = t.classList.contains('stick') ? 'stick' : t.dataset.b;
-      const r = t.getBoundingClientRect();
-      drag = { key, el: t, dx: e.clientX - (r.left + r.width / 2), dy: e.clientY - (r.top + r.height / 2), id: e.pointerId };
+      const r = localRect(t);
+      const [px, py] = toLocal(e.clientX, e.clientY);
+      drag = { key, el: t, dx: px - (r.left + r.width / 2), dy: py - (r.top + r.height / 2), id: e.pointerId };
       this.select(key);
     };
     const move = (e) => {
       if (!drag || e.pointerId !== drag.id) return;
-      const cx = e.clientX - drag.dx, cy = e.clientY - drag.dy;
-      const W = window.innerWidth, H = window.innerHeight;
+      const [px, py] = toLocal(e.clientX, e.clientY);
+      const cx = px - drag.dx, cy = py - drag.dy;
+      const W = viewW(), H = viewH();
       if (drag.key === 'stick') {
         const s = this.layout.stick, sz = 132 * s.scale;
-        const zr = this.zone.getBoundingClientRect();
+        const zr = localRect(this.zone);
         s.left = Math.round(Math.min(Math.max(0, cx - zr.left - sz / 2), W - sz));
         s.bottom = Math.round(Math.min(Math.max(0, zr.bottom - cy - sz / 2), H - sz));
       } else {
         const c = this.layout.buttons[drag.key];
-        const cr = this.cluster.getBoundingClientRect();
+        const cr = localRect(this.cluster);
         const k = cr.width / 300 || 1; // لو الزراير متصغرة على الشاشات القصيرة
         c.r = Math.round(Math.min(Math.max(0, (cr.right - cx) / k - c.size / 2), W / k - c.size));
         c.b = Math.round(Math.min(Math.max(0, (cr.bottom - cy) / k - c.size / 2), H / k - c.size));

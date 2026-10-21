@@ -8,7 +8,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { Match } from './game/match.js';
 import { UI } from './ui/ui.js';
 import { Tournament } from './game/tournament.js';
-import { Controller, TouchPad, isTouch } from './core/input.js';
+import { Controller, TouchPad, isTouch, view } from './core/input.js';
 import { audio } from './core/audio.js';
 import { MAP_ORDER, TEAMS, TOURNAMENT } from './game/config.js';
 import { pick } from './core/util.js';
@@ -43,12 +43,13 @@ class Game {
     this.clock = new THREE.Clock();
 
     window.addEventListener('resize', () => this.resize());
+    window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 250));
     window.addEventListener('keydown', (e) => {
       if (!this.match || this.match.opts.demo || this.match.state === 'end') return;
       // في وضع الاتنين زرار P بتاع الكوبري للاعب التاني
       if (e.code === 'Escape' || (e.code === 'KeyP' && !this.match.opts.versus)) this.togglePause();
     });
-    const unlock = () => audio.init();
+    const unlock = () => { audio.init(); this.goLandscape(); };
     window.addEventListener('pointerdown', unlock);
     window.addEventListener('keydown', unlock);
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.match && !this.match.opts.demo && !this.paused) this.togglePause(true); });
@@ -118,7 +119,15 @@ class Game {
 
 
   resize() {
-    const w = window.innerWidth, h = window.innerHeight;
+    // موبايل بالطول: نرسم اللعبة بالعرض ونلفها، وإنت تلف الموبايل في إيدك
+    const portrait = this.touch && window.innerHeight > window.innerWidth;
+    view.rot = portrait;
+    document.documentElement.classList.toggle('rot', portrait);
+    const w = portrait ? window.innerHeight : window.innerWidth;
+    const h = portrait ? window.innerWidth : window.innerHeight;
+    const app = document.getElementById('app');
+    app.style.width = w + 'px';
+    app.style.height = h + 'px';
     this.width = w; this.height = h;
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
@@ -126,6 +135,19 @@ class Game {
     this.camera.updateProjectionMatrix();
     if (this.composer) this.composer.setSize(w, h);
   }
+
+  // أول لمسة: شاشة كاملة وقفل على العرض (بيشتغل على أندرويد؛ الآيفون ما بيسمحش)
+  async goLandscape() {
+    if (!this.touch || this.triedLock) return;
+    this.triedLock = true;
+    try {
+      const el = document.documentElement;
+      if (!document.fullscreenElement && el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' });
+      if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+    } catch (e) { /* الآيفون أو المتصفح رفض: اللعبة ملفوفة بالـCSS */ }
+    setTimeout(() => this.resize(), 300);
+  }
+
 
   setSetting(k, v) {
     this.settings[k] = v;
