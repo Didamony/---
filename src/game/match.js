@@ -14,6 +14,7 @@ import { clamp, randRange, pick, chance, dist2, arNum } from '../core/util.js';
 import { audio } from '../core/audio.js';
 import { crackedGlassTexture } from '../render/textures.js';
 import { endInputFrame } from '../core/input.js';
+import { Recorder, Replay } from './replay.js';
 
 const tmp = new THREE.Vector3();
 const tmp2 = new THREE.Vector3();
@@ -118,6 +119,7 @@ export class Match {
       this.setControl(t, this.teams[t][1]);
     }
 
+    this.recorder = new Recorder(this);
     this.placeKickoff(chance(0.5) ? 0 : 1);
     this.rig.snap(new THREE.Vector3(0, 0, 0));
     this.rig.mode = 'orbit';
@@ -595,11 +597,19 @@ export class Match {
         } else this.clock += dt;
         break;
       case 'goal':
-        if (this.stateT > 4.2) {
-          for (const p of this.allPlayers) p.stopCelebrate();
-          if (this.opts.rule.type === 'goals' && Math.max(...this.score) >= this.opts.rule.n) this.endMatch();
-          else if (this.opts.rule.type === 'time' && this.clock <= 0) this.endMatch();
-          else { this.placeKickoff(this.concededTeam); this.setState('kickoff'); }
+        if (this.stateT > 3.0 && !this.replayed && !this.opts.demo && this.game.settings.replay !== 'off') {
+          this.replayed = true;
+          this.replay = new Replay(this, this.recorder);
+          if (!this.replay.done) { this.setState('replay'); this.ui.replay(true); break; }
+        }
+        if (this.stateT > 4.2) this.afterGoal();
+        break;
+      case 'replay':
+        this.replay.update(dt);
+        if (this.replay.done || (this.stateT > 0.6 && this.anyPressed())) {
+          this.ui.replay(false);
+          this.replay = null;
+          this.afterGoal();
         }
         break;
       case 'freekick':
@@ -616,6 +626,8 @@ export class Match {
         break;
     }
 
+    if (this.state === 'replay') { this.ui.hud(this, dt); return; }
+    if (this.state === 'play' || (this.state === 'goal' && this.stateT < 1.2)) this.recorder.record(dt);
     const live = this.state === 'play';
     if (live || this.state === 'freekick' || this.state === 'event') this.computeRoles();
 
@@ -1228,6 +1240,14 @@ export class Match {
     this.setState('play');
   }
 
+  afterGoal() {
+    for (const p of this.allPlayers) { p.stopCelebrate(); p.show(p.active); }
+    this.recorder.reset();
+    if (this.opts.rule.type === 'goals' && Math.max(...this.score) >= this.opts.rule.n) this.endMatch();
+    else if (this.opts.rule.type === 'time' && this.clock <= 0) this.endMatch();
+    else { this.placeKickoff(this.concededTeam); this.setState('kickoff'); }
+  }
+
   // ======================================================== جون؟
   checkGoal() {
     const b = this.ball.pos;
@@ -1250,6 +1270,8 @@ export class Match {
 
   goalScored(team, g) {
     this.score[team]++;
+    this.lastGoal = g;
+    this.replayed = false;
     this.concededTeam = 1 - team;
     const lt = this.ball.lastTouch;
     const scorer = lt && lt.team === team ? lt : null;

@@ -945,4 +945,4 @@ export class Animator {
   }
 }
 
-export { HIP_H };
+export { HIP_H, KEYS };

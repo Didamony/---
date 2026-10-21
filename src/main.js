@@ -17,7 +17,7 @@ const SETTINGS_KEY = 'matsh-elhara-settings-v1';
 
 class Game {
   constructor() {
-    this.settings = { quality: 'high', volume: 0.8, muted: false, hints: 'on', passAssist: 'normal', vibrate: 'on', autoQuality: 'on' };
+    this.settings = { quality: 'high', volume: 0.8, muted: false, hints: 'on', passAssist: 'normal', vibrate: 'on', autoQuality: 'on', replay: 'on' };
     try { Object.assign(this.settings, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); } catch (e) { /* ignore */ }
     if (isTouch() && !localStorage.getItem?.(SETTINGS_KEY)) this.settings.quality = 'medium';
     audio.setVolume(this.settings.volume);

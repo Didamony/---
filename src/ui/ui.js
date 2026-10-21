@@ -39,6 +39,7 @@ export class UI {
         <div class="mapname"><b></b><small></small></div>
         <div class="hm hidden">👀 الناظر برة!</div>
         <div class="power hidden"><i></i><span>شوطة</span></div>
+        <div class="replaytag hidden"><i></i>إعادة<small>أي زرار يعدّيها</small></div>
         <div class="pensbar hidden"><div class="pr p0"><b></b><span></span></div><div class="pr p1"><b></b><span></span></div></div>
         <div class="who w0 hidden"><b></b><div class="stam"><i></i></div></div>
         <div class="who w1 hidden"><b></b><div class="stam"><i></i></div></div>
@@ -182,6 +183,7 @@ export class UI {
         <div class="sec"><h3>الصوت</h3><input type="range" min="0" max="100" class="vol"><label class="chk"><input type="checkbox" class="mute"> كتم الصوت</label></div>
         <div class="sec"><h3>اهتزاز الموبايل</h3><div class="seg" data-k="vibrate"><button data-v="on">شغال</button><button data-v="off">مقفول</button></div></div>
         <div class="sec"><h3>تخفيف الرسومات لوحدها لو الجهاز بيهنج</h3><div class="seg" data-k="autoQuality"><button data-v="on">أيوه</button><button data-v="off">لأ</button></div></div>
+        <div class="sec"><h3>إعادة الجون بالبطيء</h3><div class="seg" data-k="replay"><button data-v="on">شغالة</button><button data-v="off">مقفولة</button></div></div>
         <div class="sec"><h3>مساعدة الباصة</h3><div class="seg" data-k="passAssist"><button data-v="high">عالية</button><button data-v="normal">عادية</button><button data-v="manual">يدوي</button></div></div>
         <div class="sec"><h3>زراير الموبايل</h3><div class="seg"><button class="touchedit-btn">🎮 غيّر مكان وحجم الزراير</button></div></div>
         <div class="sec"><h3>إرشادات الزراير تحت</h3><div class="seg" data-k="hints"><button data-v="on">تظهر</button><button data-v="off">تستخبى</button></div></div>
@@ -542,6 +544,13 @@ export class UI {
       $('span', row).innerHTML = h;
       row.classList.toggle('now', P.turn === t && P.phase !== 'setup');
     }
+  }
+
+  replay(on) {
+    $('.replaytag', this.hudEl).classList.toggle('hidden', !on);
+    this.hudEl.classList.toggle('replaying', on);
+    $('#banner').classList.add('hidden');
+    if (on) $('#toast').classList.add('hidden');
   }
 
   headmaster(v) { $('.hm', this.hudEl).classList.toggle('hidden', !v); }
