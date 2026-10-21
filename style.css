@@ -84,7 +84,7 @@ button { font-family: inherit; }
 .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; padding: 16px; overflow-y: auto; }
 .screen > .panel { margin: auto 0; flex-shrink: 0; }
 #controls, #setup, #tourney, #result, #shop { justify-content: flex-start; }
-#menu { background: linear-gradient(90deg, rgba(10,8,6,0.0) 30%, rgba(10,8,6,0.75) 100%); align-items: flex-end; padding-inline: 6vw; }
+#menu { background: linear-gradient(90deg, rgba(10,8,6,0.0) 20%, rgba(10,8,6,0.7) 100%); flex-direction: row; align-items: center; justify-content: flex-start; gap: clamp(20px, 4vw, 60px); padding-inline: 6vw; }
 .logo { text-align: center; margin-bottom: 18px; }
 .logo h1 { font-size: clamp(48px, 8vw, 96px); margin: 0; line-height: 1; font-weight: 900; color: var(--yellow); text-shadow: 0 5px 0 #8a2a12, 0 10px 24px rgba(0,0,0,0.6); transform: rotate(-3deg); }
 .logo p { margin: 10px 0 0; font-size: 20px; font-weight: 700; text-shadow: 0 2px 6px #000; }
@@ -275,3 +275,10 @@ button { font-family: inherit; }
 @media (hover: none) and (pointer: coarse) {
   .who { display: none !important; }
 }
+
+/* اللوجو */
+.logoimg { width: clamp(180px, 26vw, 320px); height: auto; border-radius: 22%; display: block; margin: 0 auto; filter: drop-shadow(0 12px 28px rgba(0,0,0,0.6)); transform: rotate(-3deg); }
+.logoimg.pulse { width: 200px; animation: logopulse 1.4s ease-in-out infinite; }
+@keyframes logopulse { 50% { transform: rotate(-3deg) scale(1.05); } }
+.loading p { margin-top: 18px; }
+@media (max-height: 560px) { .logoimg { width: 150px; } .logoimg.pulse { width: 140px; } }

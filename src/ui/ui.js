@@ -11,7 +11,6 @@ const P = new THREE.Vector3();
 const pair = (a, b) => `<span>${arNum(a)}</span><i>-</i><span>${arNum(b)}</span>`;
 
 
-const BALL_SVG = `<svg viewBox="0 0 100 100" class="ballsvg"><circle cx="50" cy="50" r="46" fill="#f4f1e8" stroke="#1b1b1b" stroke-width="4"/><polygon points="50,30 67,42 61,62 39,62 33,42" fill="#1b1b1b"/><path d="M50 30 L50 6 M67 42 L89 34 M61 62 L74 84 M39 62 L26 84 M33 42 L11 34" stroke="#1b1b1b" stroke-width="4"/></svg>`;
 
 export class UI {
   constructor(game) {
@@ -64,7 +63,7 @@ export class UI {
     const add = (id, html) => { const d = el('div', 'screen hidden', html); d.id = id; S.appendChild(d); this.screens[id] = d; return d; };
 
     const menu = add('menu', `
-      <div class="logo">${BALL_SVG}<h1>ماتش الحارة</h1><p>كورة شوارع.. بقوانين الحتة</p></div>
+      <div class="logo"><img class="logoimg" src="assets/logo/icon-512.png" alt="كرة الشوارع"><p>بقوانين الحتة</p></div>
       <div class="menu-btns">
         <button data-a="quick" class="big">⚽ ماتش سريع</button>
         <button data-a="tourney">🏆 البطولة: كأس الحتة</button>
@@ -253,7 +252,7 @@ export class UI {
     add('tourney', `<div class="panel wide"><h2 class="ttl">🏆 كأس الحتة</h2><div class="tinfo"></div><div class="ladder"></div><div class="actions"></div></div>`);
     add('shop', `<div class="panel"><h2 class="ttl">🛒 محل عم سيد</h2><div class="money"></div><div class="items"></div><div class="actions"><button class="back big">خلصت</button></div></div>`);
     $('#shop .back').onclick = () => { audio.play('click'); this.showTourney(); };
-    add('loading', `<div class="loading">${BALL_SVG}<p>بنجهّز الحارة...</p></div>`);
+    add('loading', `<div class="loading"><img class="logoimg pulse" src="assets/logo/icon-512.png" alt="كرة الشوارع"><p>بنجهّز الحارة...</p></div>`);
   }
 
   show(id) {
