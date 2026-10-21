@@ -1,0 +1,26 @@
+{
+  "name": "matsh-elhara",
+  "version": "1.0.0",
+  "description": "ماتش الحارة - لعبة كورة شوارع 3D في المتصفح",
+  "scripts": {
+    "build": "node tools/build.mjs src/main.js game.js",
+    "dev": "node tools/build.mjs src/main.js game.js --dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Didamony/---.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Didamony/---/issues"
+  },
+  "homepage": "https://github.com/Didamony/---#readme",
+  "devDependencies": {
+    "@fontsource/cairo": "^5.0.8",
+    "esbuild": "^0.24.0",
+    "three": "^0.169.0"
+  },
+  "private": true
+}
