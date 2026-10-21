@@ -63,7 +63,10 @@ export class Match {
     this.ball = new Ball(this.scene);
     this.ball.setNight(this.night);
     this.ball.friction = opts.mapId === 'yard' ? 1.15 : opts.mapId === 'school' ? 0.75 : 0.85;
-    this.ball.onBounce = (s) => { if (s > 1.5) audio.play('bounce', s); };
+    this.ball.onBounce = (s) => {
+      if (s > 1.5) audio.play('bounce', s);
+      if (s > 2 && opts.mapId === 'yard') this.fx.puff(this.ball.pos, { n: 2, size: 0.4, life: 0.6, up: 0.3, opacity: 0.5 });
+    };
     this.ball.onHit = (c, s, p) => this.onBallHit(c, s, p);
     this.fx = new FX(this.scene);
     this.rig = new CameraRig(this.camera, this.def, this.ctx);
@@ -247,6 +250,7 @@ export class Match {
       this.say(v, pick(LINES.nutmegged), { delay: 0.4 });
       audio.play('ooh');
       this.ui.banner('كوبري!', `${p.name} عدّاها من بين رجلين ${v.name}`, 'nut');
+      this.slowmo(0.4, 0.5);
       this.game.onEvent?.('nutmeg', p.team);
     }
   }
@@ -446,8 +450,16 @@ export class Match {
   }
 
   // ======================================================== الحلقة الرئيسية
+  // تصوير بطيء للحظات الحلوة
+  slowmo(scale, dur) { this.slow = { scale, t: dur }; }
+
   update(dt) {
     dt = Math.min(dt, 1 / 20);
+    if (this.slow) {
+      this.slow.t -= dt;
+      dt *= this.slow.scale;
+      if (this.slow.t <= 0) this.slow = null;
+    }
     this.time += dt;
     this.stateT += dt;
     for (const c of this.controllers) if (c) c.update(dt);
@@ -464,6 +476,7 @@ export class Match {
           this.rig.zoomTarget = 1;
           this.setState('kickoff');
           this.ui.banner(pick(LINES.kickoff), `${this.teamDef(0).name} × ${this.teamDef(1).name}`, 'start');
+          if (!this.opts.versus && !this.game.touch) this.after(3, () => this.ui.toast('دوس S كتير = شوطة أقوى • D كعبلة • F شدّ من الهدوم • W كوبري'));
         }
         break;
       case 'kickoff':
@@ -522,6 +535,7 @@ export class Match {
       this.updateSlides();
     }
     this.updateBall(dt, live);
+    if (!this.owner && this.ball.speed() > 13 && !this.ball.frozen) this.fx.trail(this.ball.pos, this.night);
     if (live) {
       this.checkGoal();
       this.checkSpecialBall();
@@ -835,7 +849,9 @@ export class Match {
         if (o.team === s.team) { this.say(o, 'إنت بتكعبلني أنا؟!'); continue; }
         this.addScandal(s.team, foul ? TUNE.scandalTackle : TUNE.scandalCleanTrip);
         this.after(0.5, () => this.say(o, pick(LINES.hurt), { color: '#ffe0e0' }));
+        this.fx.impact(tmp.set(o.pos.x, 0.9, o.pos.z));
         if (foul) {
+          this.slowmo(0.35, 0.45);
           s.stats.fouls++;
           this.stats.fouls[s.team]++;
           const yell = this.nearestTo(o.pos, o.team, (q) => q !== o) || o;
@@ -1136,6 +1152,7 @@ export class Match {
     audio.play('whistle');
     this.rig.zoomTarget = 0.82;
     this.rig.shake(0.2, 0.5);
+    this.slowmo(0.3, 0.9);
     this.after(0.5, () => { this.ball.vel.multiplyScalar(0.2); });
     for (const p of this.allPlayers) {
       if (!p.active || p.state === 'fallen') continue;

@@ -1,6 +1,6 @@
 // مؤثرات: تراب، إزاز مكسور، نجوم فوق الراس، وسحابة الخناقة
 import * as THREE from 'three';
-import { puffTexture, starTexture } from './textures.js';
+import { puffTexture, starTexture, glowTexture, canvasTex } from './textures.js';
 import { randRange } from '../core/util.js';
 
 export class FX {
@@ -40,6 +40,41 @@ export class FX {
     }
   }
 
+  // أثر ورا الكورة لما تتشاط جامد
+  trail(pos, night) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: night ? '#fff0c0' : '#ffffff', transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+    s.position.copy(pos);
+    s.scale.setScalar(0.32);
+    this.scene.add(s);
+    this.puffs.push({ s, vx: 0, vy: 0, vz: 0, life: 0.22, t: 0, sc: 0.32, op: 0.55 });
+  }
+
+  // نجمة كرتون مكان الخبطة
+  impact(pos) {
+    if (!this.impactTex) {
+      this.impactTex = canvasTex(256, 256, (g, w) => {
+        g.translate(w / 2, w / 2);
+        g.beginPath();
+        for (let i = 0; i < 24; i++) {
+          const r = i % 2 ? 62 : 118, a = (i / 24) * Math.PI * 2;
+          g.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        g.closePath();
+        g.fillStyle = '#ffd23f'; g.fill();
+        g.lineWidth = 10; g.strokeStyle = '#c8322a'; g.stroke();
+        g.fillStyle = '#c8322a';
+        g.font = '900 78px Cairo';
+        g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText('طاخ!', 0, 8);
+      });
+    }
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.impactTex, transparent: true, depthTest: false }));
+    s.position.copy(pos);
+    s.renderOrder = 20;
+    this.scene.add(s);
+    this.puffs.push({ s, vx: 0, vy: 0.4, vz: 0, life: 0.55, t: 0, sc: 1.1, op: 1, pop: true });
+  }
+
   // نجوم بتلف فوق راس اللي اتخبط
   dizzy(getPos, dur = 2.5) {
     const g = new THREE.Group();
@@ -66,8 +101,13 @@ export class FX {
       const k = p.t / p.life;
       if (k >= 1) { this.scene.remove(p.s); p.s.material.dispose(); this.puffs.splice(i, 1); continue; }
       p.s.position.x += p.vx * dt; p.s.position.y += p.vy * dt; p.s.position.z += p.vz * dt;
-      p.s.scale.setScalar(p.sc * (1 + k * 1.4));
-      p.s.material.opacity = p.op * (1 - k);
+      if (p.pop) {
+        p.s.scale.setScalar(p.sc * (k < 0.15 ? k / 0.15 : 1 + (k - 0.15) * 0.3));
+        p.s.material.opacity = k < 0.7 ? 1 : (1 - k) / 0.3;
+      } else {
+        p.s.scale.setScalar(p.sc * (1 + k * 1.4));
+        p.s.material.opacity = p.op * (1 - k);
+      }
     }
     for (let i = this.shards.length - 1; i >= 0; i--) {
       const s = this.shards[i];
