@@ -2,6 +2,17 @@
 import * as THREE from 'three';
 import { glowTexture, coneTexture } from '../render/textures.js';
 import { randRange } from '../core/util.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+let envTex = null;
+function roomEnv(renderer) {
+  if (!envTex) {
+    const pm = new THREE.PMREMGenerator(renderer);
+    envTex = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+    pm.dispose();
+  }
+  return envTex;
+}
 
 function skyDome(night) {
   const geo = new THREE.SphereGeometry(400, 32, 16);
@@ -39,7 +50,7 @@ function stars() {
 }
 
 export class Environment {
-  constructor(scene, ctx, { night, quality }) {
+  constructor(scene, ctx, { night, quality, renderer }) {
     this.scene = scene;
     this.ctx = ctx;
     this.night = night;
@@ -50,6 +61,11 @@ export class Environment {
     this.t = 0;
 
     this.group.add(skyDome(night));
+    // إضاءة محيطة ناعمة (انعكاسات خفيفة على الحاجات)
+    if (renderer) {
+      scene.environment = roomEnv(renderer);
+      scene.environmentIntensity = night ? 0.06 : 0.32;
+    }
     scene.fog = new THREE.Fog(night ? '#0a0f22' : '#c8d4d8', night ? 30 : 60, night ? 110 : 170);
     scene.background = new THREE.Color(night ? '#050a1e' : '#9cc7e8');
 

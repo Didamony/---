@@ -99,7 +99,7 @@ class Game {
     this.width = w; this.height = h;
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
-    this.camera.fov = w / h < 1.2 ? 55 : 40;
+    this.camera.fov = w / h < 1.2 ? 50 : 34;
     this.camera.updateProjectionMatrix();
     if (this.composer) this.composer.setSize(w, h);
   }

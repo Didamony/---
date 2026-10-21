@@ -12,7 +12,8 @@ export class CameraRig {
     this.zoomTarget = 1;
     this.shakeT = 0;
     this.shakeA = 0;
-    this.baseD = 8.6 + def.halfW * 1.1;
+    // زاوية بث تلفزيوني: أوطى وأبعد شوية
+    this.baseD = 11 + def.halfW * 1.15;
     this.orbit = 0;
     this.mode = 'follow';
   }
@@ -28,7 +29,7 @@ export class CameraRig {
     const b = this.ctx.bounds;
     const aspect = this.cam.aspect;
     const D = this.baseD * this.zoom;
-    const H = D * 0.96;
+    const H = D * 0.62;
     // نص عرض المنظر على الأرض تقريبًا
     const viewHalf = Math.tan((this.cam.fov * Math.PI) / 360) * Math.hypot(D, H) * aspect * 0.9;
     let fx = target.x;

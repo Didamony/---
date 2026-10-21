@@ -44,8 +44,8 @@ export class Player {
     this.stats = { goals: 0, fouls: 0, nutmegs: 0 };
 
     // دايرة لون الفريق تحت الرجلين
-    const ringM = new THREE.MeshBasicMaterial({ color: match.teamColor(team), transparent: true, opacity: 0.85, depthWrite: false });
-    this.ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.52, 32), ringM);
+    const ringM = new THREE.MeshBasicMaterial({ color: match.teamColor(team), transparent: true, opacity: 0.5, depthWrite: false });
+    this.ring = new THREE.Mesh(new THREE.RingGeometry(0.36, 0.41, 32), ringM);
     this.ring.rotation.x = -Math.PI / 2;
     this.ring.renderOrder = 2;
     match.scene.add(this.ring);
@@ -164,7 +164,29 @@ export class Player {
       this.facing = dampAngle(this.facing, Math.atan2(this.lookAt.x - this.pos.x, this.lookAt.z - this.pos.z), 6, dt);
     }
 
-    this.anim.update(dt, s === 'slide' || s === 'fallen' || s === 'dive' ? 0 : sp);
+    // تسارع ولفّ ومكان الكورة عشان الجسم يميل والراس تبص
+    const A = this.anim;
+    const prevSp = this.prevSp ?? sp, prevF = this.prevFacing ?? this.facing;
+    let df = this.facing - prevF;
+    while (df > Math.PI) df -= Math.PI * 2;
+    while (df < -Math.PI) df += Math.PI * 2;
+    A.accel += ((sp - prevSp) / Math.max(dt, 1e-3) - A.accel) * Math.min(1, dt * 6);
+    A.turn += (df / Math.max(dt, 1e-3) - A.turn) * Math.min(1, dt * 8);
+    this.prevSp = sp;
+    this.prevFacing = this.facing;
+    let look = 0, lookX = 0;
+    const tgt = this.lookAt || this.match.ball.pos;
+    if (tgt && s !== 'fallen' && s !== 'slide') {
+      let a = Math.atan2(tgt.x - this.pos.x, tgt.z - this.pos.z) - this.facing;
+      while (a > Math.PI) a -= Math.PI * 2;
+      while (a < -Math.PI) a += Math.PI * 2;
+      if (Math.abs(a) < 2.2) look = a * 0.7;
+      const d = Math.hypot(tgt.x - this.pos.x, tgt.z - this.pos.z);
+      lookX = d < 3 ? (3 - d) * 0.12 : 0; // يبص لتحت على الكورة لما تبقى قريبة
+    }
+    A.look += (look - A.look) * Math.min(1, dt * 5);
+    A.lookX += (lookX - A.lookX) * Math.min(1, dt * 5);
+    A.update(dt, s === 'slide' || s === 'fallen' || s === 'dive' ? 0 : sp);
     this.sync();
   }
 

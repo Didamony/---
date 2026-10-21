@@ -59,7 +59,7 @@ export class Match {
     // المكان
     this.ctx = buildMap(opts.mapId);
     this.scene.add(this.ctx.root);
-    this.env = new Environment(this.scene, this.ctx, { night: this.night, quality: game.quality });
+    this.env = new Environment(this.scene, this.ctx, { night: this.night, quality: game.quality, renderer: game.renderer });
     this.ball = new Ball(this.scene);
     this.ball.setNight(this.night);
     this.ball.friction = opts.mapId === 'yard' ? 1.15 : opts.mapId === 'school' ? 0.75 : 0.85;
@@ -285,7 +285,7 @@ export class Match {
   setControl(team, p) {
     const c = this.controllers[team];
     if (!c || !p) return;
-    for (const q of this.teams[team]) if (q.ctrl) { q.ctrl = null; q.setMarker(null); q.ring.material.opacity = 0.85; }
+    for (const q of this.teams[team]) if (q.ctrl) { q.ctrl = null; q.setMarker(null); q.ring.material.opacity = 0.5; }
     p.ctrl = c;
     p.setMarker(c.color);
     this.lastSwitch[team] = this.time;
@@ -321,9 +321,32 @@ export class Match {
       if (c.b.skill.pressed) p.nutmeg();
     } else {
       if (this.charge) { this.charge = 0; this.ui.power(0); }
+      // قطع: زرار القطع (أو الباصة لما الخصم معاه الكورة) يوجّه اللعيب لوحده على اللي معاه الكورة
+      const oppHas = this.owner && this.owner.team !== p.team;
+      const pressing = c.b.press.down || (c.b.pass.down && (oppHas || !this.owner));
+      p.pressing = pressing;
+      if (pressing && Math.hypot(c.axis.x, c.axis.z) < 0.25 && p.canAct) {
+        let tx, tz;
+        if (oppHas) {
+          // نقف قدامه ما بينه وبين جوننا
+          const o = this.owner, own = this.ownGoal(p.team);
+          const gx = own.x - o.pos.x, gz = -o.pos.z, gl = Math.hypot(gx, gz) || 1;
+          const d = dist2(o.pos.x, o.pos.z, p.pos.x, p.pos.z);
+          const lead = d > 2.5 ? 0.9 : 0.25;
+          tx = o.pos.x + o.vel.x * 0.25 + (gx / gl) * lead;
+          tz = o.pos.z + o.vel.z * 0.25 + (gz / gl) * lead;
+        } else {
+          const t = clamp(dist2(ball.pos.x, ball.pos.z, p.pos.x, p.pos.z) / 7, 0, 1);
+          tx = ball.pos.x + ball.vel.x * t * 0.7;
+          tz = ball.pos.z + ball.vel.z * t * 0.7;
+        }
+        const dx = tx - p.pos.x, dz = tz - p.pos.z, dl = Math.hypot(dx, dz);
+        if (dl > 0.15) p.want.set(dx / dl * Math.min(1, dl / 0.6), dz / dl * Math.min(1, dl / 0.6));
+        else p.want.set(0, 0);
+      }
       if (c.b.tackle.pressed) {
         // نلف ناحية الكورة لو مش ماسك اتجاه
-        if (!(c.axis.x || c.axis.z)) p.faceTo(ball.pos);
+        if (!(c.axis.x || c.axis.z)) p.faceTo(oppHas && dist2(this.owner.pos.x, this.owner.pos.z, p.pos.x, p.pos.z) < 4 ? this.owner.pos : ball.pos);
         else p.facing = Math.atan2(c.axis.x, c.axis.z);
         p.slide();
       }
@@ -336,7 +359,7 @@ export class Match {
         }
         if (best) p.pull(best);
       }
-      if (c.b.pass.pressed && this.owner && this.owner.team === p.team && !this.owner.ctrl && p.cool.call <= 0) {
+      if ((c.b.pass.pressed || c.b.press.pressed) && this.owner && this.owner.team === p.team && !this.owner.ctrl && p.cool.call <= 0) {
         p.cool.call = 1.2;
         this.say(p, pick(LINES.callPass));
         const o = this.owner;
@@ -463,6 +486,8 @@ export class Match {
     this.time += dt;
     this.stateT += dt;
     for (const c of this.controllers) if (c) c.update(dt);
+    const c0 = this.controllers[0];
+    if (c0 && c0.touch) c0.touch.setContext(this.owner && this.owner.team === 0 ? 'attack' : 'defend');
     endInputFrame();
     this.env.update(dt);
     audio.tickAmbience(dt);
@@ -605,6 +630,7 @@ export class Match {
         const b = ps[j];
         if (!b.active || b.state === 'fallen') continue;
         if (a.pullTarget === b || b.pullTarget === a) continue;
+        if (a.state === 'slide' || b.state === 'slide') continue; // الزحلقة بتعدي تحت الرجلين
         const dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z;
         const d = Math.hypot(dx, dz);
         const min = a.radius + b.radius;
@@ -762,7 +788,7 @@ export class Match {
       const fx = p.pos.x + tmp2.x * 0.3, fz = p.pos.z + tmp2.z * 0.3;
       const d = dist2(fx, fz, this.ball.pos.x, this.ball.pos.z);
       if (d > 0.68) continue;
-      const lvl = p.ctrl ? 1.0 : this.aiLevel(p.team).steal;
+      const lvl = p.ctrl ? (p.pressing ? 1.7 : 1.0) : this.aiLevel(p.team).steal;
       const rate = TUNE.stealPerSec * lvl * (o.wantSprint ? 1.25 : 1) / (o.mods.control * (o.ctrl ? 1.15 : 1));
       if (Math.random() < rate * dt) {
         this.owner = null;
@@ -837,7 +863,8 @@ export class Match {
       // الرجلين
       for (const o of this.allPlayers) {
         if (o === s || !o.active || s.slideHit.has(o) || o.down || o.state === 'gkhold' && false) continue;
-        if (dist2(hx, hz, o.pos.x, o.pos.z) > 0.75) continue;
+        // الرجل الممدودة أو الجسم نفسه
+        if (dist2(hx, hz, o.pos.x, o.pos.z) > 0.78 && dist2(s.pos.x + tmp2.x * 0.25, s.pos.z + tmp2.z * 0.25, o.pos.x, o.pos.z) > 0.6) continue;
         s.slideHit.add(o);
         const foul = o.team !== s.team && !s.slideBallFirst;
         o.fall();

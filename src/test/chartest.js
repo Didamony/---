@@ -29,6 +29,8 @@ const cam = new THREE.PerspectiveCamera(30, 1280 / 720, 0.1, 100);
 window.view = (v) => {
   if (v === 'side') { cam.position.set(0, 1.0, 14); cam.lookAt(0, 0.9, 0); chars.forEach(o => o.c.root.rotation.y = Math.PI / 2); }
   else if (v === 'front') { cam.position.set(0, 1.4, 12); cam.lookAt(0, 0.9, 0); chars.forEach(o => o.c.root.rotation.y = 0.5); }
+  else if (v === 'close') { cam.position.set(0.3, 1.45, 5.2); cam.lookAt(0, 1.0, 0); chars.forEach(o => o.c.root.rotation.y = 0.35); }
+  else if (v === 'face') { cam.position.set(0, 1.62, 1.6); cam.lookAt(0, 1.55, 0); chars.forEach(o => o.c.root.rotation.y = 0.25); }
   else if (v === 'game') { cam.position.set(-1, 7, 10); cam.lookAt(0, 0.6, 0); chars.forEach(o => o.c.root.rotation.y = Math.PI / 2); }
 };
 window.step = (t, act) => {
@@ -38,3 +40,8 @@ window.step = (t, act) => {
 };
 window.view('side'); window.step(1);
 document.body.dataset.ready = 1;
+window.faceOf = (i) => {
+  const r = chars[i].c.root; chars.forEach(o => o.c.root.rotation.y = 0.3);
+  cam.position.set(r.position.x + 0.15, 1.6 * chars[i].c.scale, 1.3); cam.lookAt(r.position.x, 1.52 * chars[i].c.scale, 0);
+  chars.forEach(o => o.a.update(1 / 60, 0)); R.render(S, cam);
+};

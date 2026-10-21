@@ -131,6 +131,7 @@ export class UI {
               <tr><td><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></td><td>جري</td></tr>
               <tr><td><kbd>A</kbd></td><td>باصة (ومن غير كورة: اطلب الكورة)</td></tr>
               <tr><td><kbd>S</kbd></td><td>شوطة (دوس كتير = أقوى)</td></tr>
+              <tr><td><kbd>E</kbd></td><td class="hot">قطع (يجري لوحده على اللي معاه الكورة، و<kbd>A</kbd> برضه وانت بتدافع)</td></tr>
               <tr><td><kbd>D</kbd></td><td class="hot">كعبلة</td></tr>
               <tr><td><kbd>F</kbd></td><td class="hot">شدّ من الهدوم (فضل داسس)</td></tr>
               <tr><td><kbd>W</kbd></td><td>كوبري (من بين رجليه)</td></tr>
@@ -148,13 +149,14 @@ export class UI {
               <tr><td>شدّ</td><td><kbd>R</kbd></td><td><kbd>O</kbd> / <kbd>Num4</kbd></td></tr>
               <tr><td>كوبري</td><td><kbd>T</kbd></td><td><kbd>P</kbd> / <kbd>Num5</kbd></td></tr>
               <tr><td>سبرنت</td><td><kbd>Shift</kbd> شمال</td><td><kbd>Shift</kbd> يمين / <kbd>Num0</kbd></td></tr>
+              <tr><td>قطع</td><td><kbd>C</kbd></td><td><kbd>I</kbd> / <kbd>Num6</kbd></td></tr>
               <tr><td>غيّر</td><td><kbd>Q</kbd></td><td><kbd>Enter</kbd></td></tr>
               <tr><td>وقّف</td><td colspan="2"><kbd>Esc</kbd></td></tr>
             </table></div>
           <div class="ccard"><h3>الدراع (Gamepad)</h3>
             <table>
               <tr><td>الاستيك الشمال</td><td>جري</td></tr>
-              <tr><td><kbd>A</kbd></td><td>باصة</td></tr><tr><td><kbd>X</kbd></td><td>شوطة</td></tr>
+              <tr><td><kbd>A</kbd></td><td>باصة (وانت بتدافع: قطع)</td></tr><tr><td><kbd>X</kbd></td><td>شوطة</td></tr>
               <tr><td><kbd>B</kbd></td><td>كعبلة</td></tr><tr><td><kbd>LB</kbd> / <kbd>LT</kbd></td><td>شدّ</td></tr>
               <tr><td><kbd>Y</kbd></td><td>كوبري</td></tr><tr><td><kbd>RT</kbd></td><td>سبرنت</td></tr><tr><td><kbd>RB</kbd></td><td>غيّر</td></tr>
             </table>
@@ -317,7 +319,7 @@ export class UI {
     const versus = m.controllers[0] && m.controllers[1];
     $('.keys', h).innerHTML = versus ? '' : `
       <span><kbd>↑↓←→</kbd>جري</span><span><kbd>A</kbd>باصة</span><span><kbd>S</kbd>شوطة</span>
-      <span class="hot"><kbd>D</kbd>كعبلة</span><span class="hot"><kbd>F</kbd>شدّ</span><span><kbd>W</kbd>كوبري</span>
+      <span class="hot"><kbd>E</kbd>قطع</span><span class="hot"><kbd>D</kbd>كعبلة</span><span class="hot"><kbd>F</kbd>شدّ</span><span><kbd>W</kbd>كوبري</span>
       <span><kbd>Shift</kbd>سبرنت</span><span><kbd>Space</kbd>غيّر</span>`;
     $('.keys', h).style.display = this.game.settings.hints === 'off' || this.game.touch ? 'none' : '';
     for (let t = 0; t < 2; t++) $(`.w${t}`, h).classList.toggle('hidden', !m.controllers[t]);

@@ -102,7 +102,7 @@ function buildAlley(ctx) {
   for (let i = 0; i < 7; i++) {
     const x0 = -24 + i * 7, x1 = x0 + 7;
     const c = colors[(i + 3) % colors.length];
-    const h = 1.15 + (i % 2) * 0.25;
+    const h = 0.7 + (i % 2) * 0.15;
     const m = new THREE.MeshStandardMaterial({ map: plasterTexture(c, i + 20, { band: 'rgba(70,60,50,0.35)', bricks: false }), roughness: 0.95 });
     const b = box(7, h, 0.35, m, (x0 + x1) / 2, h / 2, NZ + 0.18, ctx.static);
     box(7, 0.04, 0.36, cut, (x0 + x1) / 2, h + 0.02, NZ + 0.18, ctx.static).castShadow = false;
