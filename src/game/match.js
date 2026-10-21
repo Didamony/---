@@ -276,6 +276,7 @@ export class Match {
     ball.frozen = false;
     ball.pos.y = Math.max(ball.pos.y, ball.r);
     ball.kick(vx, vy, vz, p);
+    if (info.curl) { ball.curl = info.curl; ball.curlT = info.curlT || 1; }
     p.cool.touch = 0.28;
     p.cool.kick = 0.4;
     this.pendingPass = null;
@@ -382,7 +383,9 @@ export class Match {
         const manualDir = Math.hypot(c.axis.x, c.axis.z) > 0.25;
         const dir = manualDir ? { x: c.axis.x, z: c.axis.z } : { x: Math.sin(p.facing), z: Math.cos(p.facing) };
         const best = this.bestPassTarget(p, dir, false, this.passCone());
-        p.pass(best ? best.player : null, dir.x, dir.z, power);
+        // عالية: سحبة لفوق على الزرار (موبايل) أو جري + باصة (كيبورد/دراع)
+        const lob = c.gest.pass === 'up' || (!c.b.pass.touch && c.b.sprint.down);
+        p.pass(best ? best.player : null, dir.x, dir.z, power, lob);
       }
       if (c.b.pass.down) this.lastPassT = c.b.pass.t;
       if (c.b.shoot.down) {
@@ -391,7 +394,10 @@ export class Match {
       }
       if (c.b.shoot.released) {
         const pw = Math.max(0.25, this.charge);
-        p.shoot(pw, c.axis.z * (p.team === 0 ? 1 : 1), pw * 0.35);
+        // لفّة: سحبة يمين/شمال أو ضغطة جامدة (موبايل) أو جري + شوطة (كيبورد/دراع)
+        const g = c.gest.shoot;
+        const curl = g === 'left' ? -1 : g === 'right' ? 1 : g === 'hard' || (!c.b.shoot.touch && c.b.sprint.down) ? (c.axis.z >= 0 ? 1 : -1) : 0;
+        p.shoot(pw, c.axis.z, pw * 0.35, curl);
         this.charge = 0;
         this.ui.power(0);
       }
@@ -420,6 +426,10 @@ export class Match {
         const dx = tx - p.pos.x, dz = tz - p.pos.z, dl = Math.hypot(dx, dz);
         if (dl > 0.15) p.want.set(dx / dl * Math.min(1, dl / 0.6), dz / dl * Math.min(1, dl / 0.6));
         else p.want.set(0, 0);
+      }
+      // الكورة في الهوا جنبك: شوطة = راسية/ضربة على الجون، باصة = تلعبها لزميل
+      if ((c.b.shoot.pressed || (c.b.pass.pressed && !oppHas)) && ball.pos.y > 0.3 && !this.owner) {
+        p.airIntent = { kind: c.b.shoot.pressed ? 'shot' : 'pass', t: 0.5, x: c.axis.x, z: c.axis.z };
       }
       if (c.b.tackle.pressed) {
         // نلف ناحية الكورة لو مش ماسك اتجاه
@@ -651,6 +661,7 @@ export class Match {
     if (live) for (let t = 0; t < 2; t++) if (this.controllers[t]) this.autoSwitch(t);
 
     this.resolveCollisions();
+    if (live) this.updateAirIntents(dt);
     if (live) {
       this.updatePulls(dt);
       this.updateSlides();
@@ -1238,6 +1249,26 @@ export class Match {
     this.eventActive = null;
     this.focusOverride = null;
     this.setState('play');
+  }
+
+  updateAirIntents(dt) {
+    const b = this.ball;
+    for (const p of this.allPlayers) {
+      if (!p.active) continue;
+      if (!p.ctrl && !this.owner && b.pos.y > 0.4 && p.canAct && !p.isGK) {
+        // الكمبيوتر: لو الكورة جاية عالية عليه
+        const d = dist2(p.pos.x, p.pos.z, b.pos.x, b.pos.z);
+        if (d < 1.1 && b.speed() > 3 && !p.airIntent) {
+          const g = this.goalFor(p.team);
+          const near = Math.abs(g.x - p.pos.x) < this.def.halfL * 0.6;
+          p.airIntent = { kind: near ? 'shot' : 'pass', t: 0.3, x: 0, z: 0 };
+        }
+      }
+      const it = p.airIntent;
+      if (!it) continue;
+      it.t -= dt;
+      if (p.airPlay(it.kind, it.x, it.z) || it.t <= 0) p.airIntent = null;
+    }
   }
 
   afterGoal() {

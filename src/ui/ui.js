@@ -130,8 +130,8 @@ export class UI {
           <div class="ccard"><h3>لاعب واحد</h3>
             <table>
               <tr><td><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></td><td>جري</td></tr>
-              <tr><td><kbd>A</kbd></td><td>باصة: للزميل اللي في اتجاهك، ولو مفيش تمشي في الاتجاه. فضل داسس = أبعد</td></tr>
-              <tr><td><kbd>S</kbd></td><td>شوطة (دوس كتير = أقوى)</td></tr>
+              <tr><td><kbd>A</kbd></td><td>باصة: للزميل اللي في اتجاهك، ولو مفيش تمشي في الاتجاه. فضل داسس = أبعد. <kbd>Shift</kbd>+<kbd>A</kbd> = باصة عالية</td></tr>
+              <tr><td><kbd>S</kbd></td><td>شوطة (دوس كتير = أقوى). <kbd>Shift</kbd>+<kbd>S</kbd> = شوطة بلفّة. والكورة في الهوا = راسية/طايرة</td></tr>
               <tr><td><kbd>E</kbd></td><td class="hot">قطع (يجري لوحده على اللي معاه الكورة، و<kbd>A</kbd> برضه وانت بتدافع)</td></tr>
               <tr><td><kbd>D</kbd></td><td class="hot">كعبلة</td></tr>
               <tr><td><kbd>F</kbd></td><td class="hot">شدّ من الهدوم (فضل داسس)</td></tr>
@@ -161,7 +161,7 @@ export class UI {
               <tr><td><kbd>B</kbd></td><td>كعبلة</td></tr><tr><td><kbd>LB</kbd> / <kbd>LT</kbd></td><td>شدّ</td></tr>
               <tr><td><kbd>Y</kbd></td><td>كوبري</td></tr><tr><td><kbd>RT</kbd></td><td>سبرنت</td></tr><tr><td><kbd>RB</kbd></td><td>غيّر</td></tr>
             </table>
-            <p class="note">على الموبايل هتلاقي استيك وزراير على الشاشة.</p></div>
+            <p class="note">على الموبايل: اسحب على زرار الباصة لفوق = باصة عالية، واسحب على زرار الشوطة يمين أو شمال (أو اضغط جامد) = شوطة بلفّة. وعلى الدراع: <kbd>RT</kbd> مع الباصة أو الشوطة.</p></div>
           <div class="ccard"><h3>قوانين الحارة</h3>
             <ul class="rules">
               <li><b>عدّاد الفضيحة:</b> كل كعبلة أو شدّة بتملاه. لو اتملى: يا إما <b>خناقة</b> يا إما <b>أمه تنادي عليه</b> ويروّح!</li>

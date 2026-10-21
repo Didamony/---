@@ -638,6 +638,27 @@ export const ACTIONS = {
       [0.52, 'def'],
     ],
   }),
+  // راسية: نطة وضربة بالراس
+  header: makeAction({
+    frames: [
+      [0, 'def'],
+      [0.1, { hy: -0.09, ltx: -0.35, lkx: 0.7, lax: 0.3, rtx: -0.35, rkx: 0.7, rax: 0.3, lsx: -0.4, rsx: -0.4, srx: 0.15 }],
+      [0.24, { hy: 0.3, ltx: 0.05, lkx: 0.35, lax: 0.4, rtx: 0.15, rkx: 0.6, rax: 0.4, srx: -0.32, nrx: -0.45, lsx: -1.1, lsz: 0.7, rsx: -1.1, rsz: -0.7 }],
+      [0.34, { hy: 0.26, srx: 0.38, nrx: 0.55 }],
+      [0.48, { hy: 0.02, srx: 0.12, nrx: 0.1, ltx: -0.2, lkx: 0.5, rtx: -0.2, rkx: 0.5 }],
+      [0.6, 'def'],
+    ],
+  }),
+  // ضربة طايرة
+  volley: makeAction({
+    frames: [
+      [0, 'def'],
+      [0.1, { rtx: 0.6, rkx: 1.4, rax: 0.3, lkx: 0.3, hrx: -0.1, lsx: -0.5, lsz: 0.9, rsz: -0.8, sry: 0.3 }],
+      [0.2, { rtx: -1.55, rkx: 0.08, rax: 0.4, hrx: -0.28, srx: -0.15, lsz: 1.1, rsz: -1.0, sry: -0.3, hy: -0.04 }],
+      [0.36, { rtx: -0.9, rkx: 0.5, hrx: -0.1, srx: 0 }],
+      [0.5, 'def'],
+    ],
+  }),
   // باصة بوش الرجل
   pass: makeAction({
     frames: [

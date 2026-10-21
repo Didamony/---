@@ -69,6 +69,8 @@ export class Ball {
 
   kick(vx, vy, vz, by) {
     this.vel.set(vx, vy, vz);
+    this.curl = 0;
+    this.curlT = 0;
     if (by) { this.lastTouch = by; this.lastKickTeam = by.team; }
   }
 
@@ -89,6 +91,12 @@ export class Ball {
     const v = this.vel, p = this.pos, r = this.r;
     const air = p.y > r + 0.02;
     v.y -= 9.81 * dt;
+    // لفّة: قوة جانبية عمودية على الحركة
+    if (this.curlT > 0) {
+      this.curlT -= dt;
+      const gs = Math.hypot(v.x, v.z);
+      if (gs > 2) { v.x += (-v.z / gs) * this.curl * dt; v.z += (v.x / gs) * this.curl * dt; }
+    }
     const drag = air ? 0.12 : 0.0;
     v.multiplyScalar(1 - drag * dt);
     p.addScaledVector(v, dt);

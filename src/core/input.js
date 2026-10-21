@@ -58,7 +58,9 @@ export class Controller {
     this.label = label;
     this.axis = { x: 0, z: 0 };
     this.b = {};
-    for (const n of BUTTONS) this.b[n] = { down: false, pressed: false, released: false, t: 0 };
+    for (const n of BUTTONS) this.b[n] = { down: false, pressed: false, released: false, t: 0, touch: false };
+    // سحبة على زرار الباصة/الشوطة (موبايل): up / left / right
+    this.gest = { pass: null, shoot: null };
   }
 
   update(dt) {
@@ -86,9 +88,11 @@ export class Controller {
         raw.pull ||= bt(4) || bt(6); raw.switch ||= bt(5); raw.sprint ||= bt(7);
       }
     }
+    const fromTouch = {};
     if (this.touch) {
       x += this.touch.axis.x; z += this.touch.axis.z;
-      for (const n of BUTTONS) raw[n] ||= !!this.touch.btn[n];
+      for (const n of BUTTONS) { if (this.touch.btn[n]) fromTouch[n] = true; raw[n] ||= !!this.touch.btn[n]; }
+      for (const n of ['pass', 'shoot']) if (this.touch.btn[n]) this.gest[n] = this.touch.gest[n] || null;
     }
     const l = Math.hypot(x, z);
     if (l > 1) { x /= l; z /= l; }
@@ -96,6 +100,7 @@ export class Controller {
     for (const n of BUTTONS) {
       const s = this.b[n];
       s.pressed = raw[n] && !s.down;
+      if (s.pressed) { s.touch = !!fromTouch[n]; if (n === 'pass' || n === 'shoot') this.gest[n] = this.touch?.gest[n] || null; }
       s.released = !raw[n] && s.down;
       s.t = raw[n] ? s.t + dt : 0;
       s.down = raw[n];
@@ -165,6 +170,15 @@ export class TouchPad {
     }, { passive: false });
     const move = (e) => {
       for (const t of e.changedTouches) {
+        // سحبة على زرار: لفوق = باصة عالية، يمين/شمال = لفّة
+        for (const n of ['pass', 'shoot']) {
+          const bt = this.btnTouch[n];
+          if (!bt || bt.id !== t.identifier || !this.btn[n]) continue;
+          const [lx, ly] = toLocal(t.clientX, t.clientY);
+          const dx = lx - bt.x, dy = ly - bt.y;
+          if (dy < -26 && Math.abs(dy) > Math.abs(dx)) this.gest[n] = 'up';
+          else if (Math.abs(dx) > 26) this.gest[n] = dx > 0 ? 'right' : 'left';
+        }
         if (t.identifier !== sid) continue;
         const [lx, ly] = toLocal(t.clientX, t.clientY);
         let dx = lx - cx, dy = ly - cy;
@@ -188,9 +202,20 @@ export class TouchPad {
     window.addEventListener('touchmove', move, { passive: true });
     window.addEventListener('touchend', end);
     window.addEventListener('touchcancel', end);
+    this.gest = { pass: null, shoot: null };
+    this.btnTouch = {};
     this.el.querySelectorAll('.tb').forEach((b) => {
       const n = b.dataset.b;
-      const on = (e) => { if (this.editing) return; this.btn[n] = true; b.classList.add('on'); e.preventDefault(); };
+      const on = (e) => {
+        if (this.editing) return;
+        this.btn[n] = true; b.classList.add('on'); e.preventDefault();
+        const t = e.changedTouches[0];
+        if (t && (n === 'pass' || n === 'shoot')) {
+          const [lx, ly] = toLocal(t.clientX, t.clientY);
+          this.btnTouch[n] = { id: t.identifier, x: lx, y: ly };
+          this.gest[n] = null;
+        }
+      };
       const off = (e) => { this.btn[n] = false; b.classList.remove('on'); e.preventDefault(); };
       b.addEventListener('touchstart', on, { passive: false });
       b.addEventListener('touchend', off, { passive: false });

@@ -40,6 +40,11 @@ function withBall(p, m, dt, lvl) {
         if (p.shoot(power, aim, goal.type === 'frame' || goal.type === 'chalk' ? randRange(0, 0.8) : randRange(0, 0.25))) return;
       }
     }
+    // عرضية: لو أنا على الطرف قريب من الجون وفيه زميل في النص
+    if (distGoal < 11 && Math.abs(p.pos.z) > def.halfW * 0.45 && chance(0.35 + lvl.skill * 0.2)) {
+      const mate = m.teams[p.team].find((q) => q !== p && q.active && !q.isGK && Math.abs(q.pos.z) < 2.5 && Math.abs(gx - q.pos.x) < 7);
+      if (mate && p.pass(mate, 0, 0, 0.5, true)) return;
+    }
     // باصة؟
     const best = m.bestPassTarget(p, null);
     if (best) {

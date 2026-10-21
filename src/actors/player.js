@@ -261,7 +261,7 @@ export class Player {
 
   // ------------------------------------------------------------ الحركات
   // باصة لزميل (أو في اتجاه لو مفيش حد)
-  pass(target, dirX = 0, dirZ = 0, power = 0.4) {
+  pass(target, dirX = 0, dirZ = 0, power = 0.4, lob = false) {
     if (!this.hasBall || !this.canAct) return false;
     const m = this.match;
     let aimX, aimZ;
@@ -274,8 +274,11 @@ export class Player {
         const d = Math.hypot(lx - b.x, lz - b.z);
         t = m.passTime(d, m.passSpeedFor(d, 6.5));
       }
-      aimX = target.pos.x + target.vel.x * t * 0.8;
-      aimZ = target.pos.z + target.vel.z * t * 0.8;
+      // بينية: لو الزميل بيجري ناحية الجون نرمي الكورة في المساحة اللي قدامه
+      const fwdRun = target.vel.x * target.dir;
+      const lead = fwdRun > 2.5 ? 1.2 : 0.8;
+      aimX = target.pos.x + target.vel.x * t * lead;
+      aimZ = target.pos.z + target.vel.z * t * lead;
     } else {
       const l = Math.hypot(dirX, dirZ) || 1;
       const D = 3 + clamp(power, 0, 1) * 19;
@@ -294,7 +297,12 @@ export class Player {
         // الزميل: الكورة توصله بسرعة يقدر يستلمها. مفيش زميل: تقف عند المسافة اللي اخترتها بقوة الدوسة
         let spd = target ? m.passSpeedFor(dist, 6.5) : m.passSpeedFor(dist, 0);
         let vy = 0.3;
-        if (target && m.lineBlocked(b.x, b.z, aimX, aimZ, this.team)) {
+        if (lob) {
+          // باصة عالية: تنزل عند الزميل (أو عند المسافة اللي اخترتها)
+          const T = clamp(dist / 8, 0.8, 1.9);
+          spd = dist / T * 1.03;
+          vy = 4.9 * T;
+        } else if (target && m.lineBlocked(b.x, b.z, aimX, aimZ, this.team)) {
           // في حد في السكة: نرفعها فوقه
           const T = clamp(dist / 11, 0.5, 1.6);
           spd = dist / T;
@@ -311,7 +319,7 @@ export class Player {
 
 
   // شوطة على الجون
-  shoot(power, aimZ = 0, aimLift = 0) {
+  shoot(power, aimZ = 0, aimLift = 0, curlSide = 0) {
     if (!this.hasBall || !this.canAct) return false;
     const m = this.match;
     const goal = m.goalFor(this.team);
@@ -329,14 +337,61 @@ export class Player {
         const tx = goal.x + Math.sign(goal.x) * 0.6;
         const dx = tx - b.x, dz = tz - b.z;
         const D = Math.max(1, Math.hypot(dx, dz));
-        const S = (10.5 + power * 15.5) * this.mods.shot;
+        let S = (10.5 + power * 15.5) * this.mods.shot;
+        if (curlSide) S *= 0.86;
         const T = D / S;
         const hTarget = clamp(goal.h * (0.15 + aimLift * 0.55) + randRange(-0.1, 0.35) * err + power * 0.12, 0.12, goal.h * 1.6);
         let vy = (hTarget - b.y + 0.5 * 9.81 * T * T) / T;
         vy = clamp(vy, 0.2, 14);
+        if (curlSide) {
+          // نشوط برا القايم واللفة ترجّعها جوه
+          const s = Math.abs(aimZ) > 0.2 ? Math.sign(aimZ) : curlSide;
+          const curl = -s * Math.sign(dx || 1) * 8;
+          const off = 0.5 * curl * T * T;
+          const sx = tx - (-dz / D) * off, sz = tz - (dx / D) * off;
+          const ddx = sx - b.x, ddz = sz - b.z, dd = Math.hypot(ddx, ddz);
+          m.kickBall(this, (ddx / dd) * S, vy, (ddz / dd) * S, { kind: 'shot', power, curl, curlT: T * 1.1 });
+          return;
+        }
         m.kickBall(this, (dx / D) * S, vy, (dz / D) * S, { kind: 'shot', power });
       },
     };
+    return true;
+  }
+
+  // كورة في الهوا: راسية (عالية) أو ضربة طايرة (واطية)
+  airPlay(kind, dirX = 0, dirZ = 0) {
+    const m = this.match, b = m.ball;
+    if (!this.canAct || m.owner || this.cool.touch > 0) return false;
+    const d = Math.hypot(b.pos.x - this.pos.x, b.pos.z - this.pos.z);
+    const h = b.pos.y / this.char.scale;
+    const header = h >= 1.05 && h <= 2.45 && d < 0.95;
+    const volley = h >= 0.3 && h < 1.05 && d < 1.05 && b.speed() > 3;
+    if (!header && !volley) return false;
+    let tx, ty, tz, spd;
+    if (kind === 'shot') {
+      const g = m.goalFor(this.team);
+      tx = g.x + Math.sign(g.x) * 0.5;
+      tz = clamp(dirZ, -1, 1) * g.hw * 0.7 + randRange(-0.6, 0.6);
+      ty = header ? 0.35 : g.h * 0.45;
+      spd = header ? randRange(10, 13) : randRange(17, 22);
+    } else {
+      const dir = (dirX || dirZ) ? { x: dirX, z: dirZ } : { x: Math.sin(this.facing), z: Math.cos(this.facing) };
+      const best = m.bestPassTarget(this, dir, false, this.ctrl ? m.passCone() : 0.6);
+      if (best) { tx = best.player.pos.x; tz = best.player.pos.z; }
+      else { const l = Math.hypot(dir.x, dir.z) || 1; tx = this.pos.x + dir.x / l * 10; tz = this.pos.z + dir.z / l * 10; }
+      ty = 0.3;
+      spd = header ? 9 : 12;
+    }
+    this.faceTo(V.set(tx, 0, tz));
+    this.anim.play(header ? 'header' : 'volley');
+    this.setState('kick', header ? 0.55 : 0.45);
+    const dx = tx - b.pos.x, dz = tz - b.pos.z, D = Math.max(1, Math.hypot(dx, dz));
+    const T = D / spd;
+    const vy = clamp((ty - b.pos.y + 4.9 * T * T) / T, -6, 9);
+    const err = this.ctrl ? 0.04 : (1 - m.aiSkill(this)) * 0.12;
+    const a = Math.atan2(dx, dz) + randRange(-err, err);
+    m.kickBall(this, Math.sin(a) * spd, vy, Math.cos(a) * spd, { kind: kind === 'shot' ? 'shot' : 'pass', power: 0.7, air: header ? 'header' : 'volley' });
     return true;
   }
 
