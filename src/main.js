@@ -90,6 +90,8 @@ class Game {
 
   setupComposer() {
     const night = this.match && this.match.night;
+    // جو مطر بالنهار: الدنيا مغيمة شوية
+    this.renderer.toneMappingExposure = this.match && !night && this.match.weather === 'rain' ? 0.95 : 1.15;
     const q = this.quality;
     const pr = Math.min(window.devicePixelRatio || 1, q === 'high' ? 2 : q === 'medium' ? 1.5 : 1);
     this.renderer.setPixelRatio(pr);
@@ -176,7 +178,7 @@ class Game {
     let away = pick(keys);
     while (away === home) away = pick(keys);
     this.match = new Match(this, {
-      mapId: mapId || pick(MAP_ORDER), night: night ?? Math.random() < 0.5, home, away, difficulty: 'normal',
+      mapId: mapId || pick(MAP_ORDER), night: night ?? Math.random() < 0.45, sunset: Math.random() < 0.35, home, away, difficulty: 'normal',
       controllers: [null, null], rule: { type: 'time', seconds: 99999 }, demo: true,
     });
     this.setupComposer();
@@ -197,7 +199,7 @@ class Game {
   startFromSetup(sel) {
     const rule = sel.rule.startsWith('t') ? { type: 'time', seconds: +sel.rule.slice(1) } : { type: 'goals', n: +sel.rule.slice(1) };
     this.startMatch({
-      mapId: sel.map, night: sel.time === 'night', home: sel.home, away: sel.away,
+      mapId: sel.map, night: sel.time === 'night', sunset: sel.time === 'sunset', weather: sel.weather || 'clear', home: sel.home, away: sel.away,
       difficulty: sel.diff, versus: sel.versus, rule,
     });
   }
@@ -206,7 +208,7 @@ class Game {
     const m = this.tourney.current();
     if (!m) return;
     this.startMatch({
-      mapId: m.map, night: m.time === 'night', home: 'home', away: m.opp,
+      mapId: m.map, night: m.time === 'night', sunset: m.time === 'sunset', weather: m.weather || 'clear', home: 'home', away: m.opp,
       difficulty: this.tourney.stage >= 3 ? 'hard' : 'normal', rule: { type: 'time', seconds: 180 },
       tourney: true, mods: [this.tourney.mods(), {}],
     });

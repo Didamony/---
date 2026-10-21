@@ -103,8 +103,8 @@ export const SHOP = [
 export const TOURNAMENT = [
   { map: 'alley', time: 'day', opp: 'away', title: 'الدور الأول: ماتش الحارة' },
   { map: 'yard', time: 'night', opp: 'green', title: 'دور الستاشر' },
-  { map: 'school', time: 'day', opp: 'yellow', title: 'دور التمانية' },
-  { map: 'roof', time: 'night', opp: 'black', title: 'نص النهائي' },
+  { map: 'school', time: 'sunset', opp: 'yellow', title: 'دور التمانية' },
+  { map: 'roof', time: 'night', weather: 'rain', opp: 'black', title: 'نص النهائي' },
   { map: 'alley', time: 'night', opp: 'white', title: 'النهائي: كأس الحتة' },
 ];
 

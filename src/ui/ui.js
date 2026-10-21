@@ -115,7 +115,8 @@ export class UI {
         <h2 class="ttl">ماتش جديد</h2>
         <div class="sec"><h3>المكان</h3><div class="maps"></div></div>
         <div class="row">
-          <div class="sec"><h3>الوقت</h3><div class="seg" data-k="time"><button data-v="day">☀️ الضهر</button><button data-v="night">🌙 بالليل</button></div></div>
+          <div class="sec"><h3>الوقت</h3><div class="seg" data-k="time"><button data-v="day">☀️ الضهر</button><button data-v="sunset">🌇 المغرب</button><button data-v="night">🌙 بالليل</button></div></div>
+          <div class="sec"><h3>الجو</h3><div class="seg" data-k="weather"><button data-v="clear">صافي</button><button data-v="dust">🌪️ خماسين</button><button data-v="rain">🌧️ مطر</button></div></div>
           <div class="sec"><h3>الصعوبة</h3><div class="seg" data-k="diff">${Object.entries(DIFFICULTY).map(([k, v]) => `<button data-v="${k}">${v.name}</button>`).join('')}</div></div>
           <div class="sec"><h3>نظام الماتش</h3><div class="seg" data-k="rule">
             <button data-v="t120">دقيقتين</button><button data-v="t180">٣ دقايق</button><button data-v="t300">٥ دقايق</button><button data-v="g3">اللي يجيب ٣</button><button data-v="g5">اللي يجيب ٥</button>
@@ -128,7 +129,7 @@ export class UI {
         <div class="actions"><button class="back">رجوع</button><button class="go big">يلا نلعب!</button></div>
       </div>
     `);
-    this.setupSel = { map: 'alley', time: 'day', diff: 'normal', rule: 't180', home: 'home', away: 'away', versus: false };
+    this.setupSel = { map: 'alley', time: 'day', weather: 'clear', diff: 'normal', rule: 't180', home: 'home', away: 'away', versus: false };
     const maps = $('.maps', setup);
     MAP_ORDER.forEach((id) => {
       const m = MAPS[id];
@@ -400,7 +401,7 @@ export class UI {
       const state = i < T.stage ? 'done' : i === T.stage && !T.s.done ? 'next' : T.s.done ? 'done' : 'locked';
       const d = el('div', `rung ${state}`, `
         <div class="rn">${arNum(i + 1)}</div>
-        <div class="ri"><b>${m.title}</b><small>${MAPS[m.map].name} • ${m.time === 'night' ? 'بالليل' : 'الضهر'} • قصاد ${TEAMS[m.opp].name}</small></div>
+        <div class="ri"><b>${m.title}</b><small>${MAPS[m.map].name} • ${{ night: 'بالليل', sunset: 'المغرب', day: 'الضهر' }[m.time]}${m.weather === 'rain' ? ' • مطر' : m.weather === 'dust' ? ' • خماسين' : ''} • قصاد ${TEAMS[m.opp].name}</small></div>
         <div class="rr">${res ? pair(res.score[0], res.score[1]) : state === 'next' ? 'الجاي' : '🔒'}</div>`);
       lad.appendChild(d);
     });
@@ -452,7 +453,7 @@ export class UI {
     $('.m0', h).style.setProperty('--tc', t0.ui);
     $('.m1', h).style.setProperty('--tc', t1.ui);
     $('.mapname b', h).textContent = m.def.name;
-    $('.mapname small', h).textContent = m.night ? 'بالليل • الكشافات بترعش' : 'الضهر';
+    $('.mapname small', h).textContent = (m.night ? 'بالليل • الكشافات بترعش' : m.sunset ? 'المغرب • نور دهبي' : 'الضهر') + (m.weather === 'rain' ? ' • مطر والأرض بتزحلق' : m.weather === 'dust' ? ' • خماسين' : '');
     $('.hm', h).classList.add('hidden');
     const versus = m.controllers[0] && m.controllers[1];
     $('.keys', h).innerHTML = versus ? '' : `

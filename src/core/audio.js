@@ -180,7 +180,7 @@ export class Audio {
   }
 
   // ------------------------------------------------ جو المكان
-  startAmbience(night, kind) {
+  startAmbience(night, kind, weather = 'clear') {
     this.stopAmbience();
     if (!this.ctx) return;
     const c = this.ctx;
@@ -196,6 +196,24 @@ export class Audio {
     const ng = c.createGain(); ng.gain.value = night ? 0.05 : 0.09;
     s.connect(lp); lp.connect(ng); ng.connect(g); s.start();
     nodes.push(s);
+    if (weather === 'rain' || weather === 'dust') {
+      // مطر: وشّ عالي. خماسين: ريح بتعلى وتوطى
+      const w = c.createBufferSource();
+      w.buffer = this.noiseBuf; w.loop = true; w.playbackRate.value = weather === 'rain' ? 1 : 0.6;
+      const f = c.createBiquadFilter();
+      f.type = weather === 'rain' ? 'highpass' : 'bandpass';
+      f.frequency.value = weather === 'rain' ? 1800 : 520;
+      f.Q.value = weather === 'rain' ? 0.5 : 0.9;
+      const wg = c.createGain(); wg.gain.value = weather === 'rain' ? 0.16 : 0.11;
+      w.connect(f); f.connect(wg); wg.connect(g); w.start();
+      nodes.push(w);
+      if (weather === 'dust') {
+        const lfo = c.createOscillator(); lfo.frequency.value = 0.13;
+        const lg = c.createGain(); lg.gain.value = 260;
+        lfo.connect(lg); lg.connect(f.frequency); lfo.start();
+        nodes.push(lfo);
+      }
+    }
     this.amb = { g, nodes, night, kind, timer: 0 };
   }
 

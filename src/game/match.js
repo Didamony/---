@@ -36,6 +36,8 @@ export class Match {
     this.camera = game.camera;
     this.def = MAPS[opts.mapId];
     this.night = opts.night;
+    this.sunset = !!opts.sunset && !opts.night;
+    this.weather = opts.weather || 'clear';
     this.teamKeys = [opts.home, opts.away];
     this.difficulty = opts.difficulty || 'normal';
     this.humanTeams = opts.controllers.map((c) => !!c);
@@ -61,13 +63,15 @@ export class Match {
     // المكان
     this.ctx = buildMap(opts.mapId);
     this.scene.add(this.ctx.root);
-    this.env = new Environment(this.scene, this.ctx, { night: this.night, quality: game.quality, renderer: game.renderer });
+    this.env = new Environment(this.scene, this.ctx, { night: this.night, sunset: this.sunset, weather: this.weather, quality: game.quality, renderer: game.renderer });
     this.ball = new Ball(this.scene);
     this.ball.setNight(this.night);
-    this.ball.friction = opts.mapId === 'yard' ? 1.15 : opts.mapId === 'school' ? 0.75 : 0.85;
+    this.ball.friction = (opts.mapId === 'yard' ? 1.15 : opts.mapId === 'school' ? 0.75 : 0.85) * (this.weather === 'rain' ? 0.62 : 1);
     this.ball.onBounce = (s) => {
       if (s > 1.5) audio.play('bounce', s);
-      if (s > 2 && opts.mapId === 'yard') this.fx.puff(this.ball.pos, { n: 2, size: 0.4, life: 0.6, up: 0.3, opacity: 0.5 });
+      if (s > 2 && opts.mapId === 'yard' && this.weather !== 'rain') this.fx.puff(this.ball.pos, { n: 2, size: 0.4, life: 0.6, up: 0.3, opacity: 0.5 });
+      // مطر: رشة مية لما الكورة تخبط في الأرض
+      if (s > 1.2 && this.weather === 'rain') this.fx.puff(this.ball.pos, { n: 4, size: 0.25, life: 0.4, up: 0.6, opacity: 0.45, color: '#c8d4e0' });
     };
     this.ball.onHit = (c, s, p) => this.onBallHit(c, s, p);
     this.fx = new FX(this.scene);
@@ -132,7 +136,7 @@ export class Match {
     this.rig.zoom = 1.3;
     this.ui.matchStart(this);
     if (!opts.demo) {
-      audio.startAmbience(this.night, opts.mapId);
+      audio.startAmbience(this.night, opts.mapId, this.weather);
       if (opts.mapId === 'school') this.after(0.6, () => audio.play('schoolbell'));
     }
   }
