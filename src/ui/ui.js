@@ -180,6 +180,7 @@ export class UI {
         <h2 class="ttl">الإعدادات</h2>
         <div class="sec"><h3>جودة الرسومات</h3><div class="seg" data-k="quality"><button data-v="high">عالية</button><button data-v="medium">متوسطة</button><button data-v="low">خفيفة (للأجهزة الضعيفة)</button></div></div>
         <div class="sec"><h3>الصوت</h3><input type="range" min="0" max="100" class="vol"><label class="chk"><input type="checkbox" class="mute"> كتم الصوت</label></div>
+        <div class="sec"><h3>زراير الموبايل</h3><div class="seg"><button class="touchedit-btn">🎮 غيّر مكان وحجم الزراير</button></div></div>
         <div class="sec"><h3>إرشادات الزراير تحت</h3><div class="seg" data-k="hints"><button data-v="on">تظهر</button><button data-v="off">تستخبى</button></div></div>
         <div class="actions"><button class="back big">تمام</button></div>
       </div>`);
@@ -188,6 +189,51 @@ export class UI {
     $('.vol', st).oninput = (e) => this.game.setSetting('volume', e.target.value / 100);
     $('.mute', st).onchange = (e) => this.game.setSetting('muted', e.target.checked);
     $('.back', st).onclick = () => { audio.play('click'); this.show(this.settingsReturn || 'menu'); };
+    $('.touchedit-btn', st).onclick = () => { audio.play('click'); this.openTouchEditor(); };
+
+    // شاشة تظبيط الزراير: الزراير نفسها بتتسحب، والشريط فوق للحجم
+    const te = add('touchedit', `
+      <div class="panel tebar">
+        <h2 class="ttl">ظبّط الزراير <button class="temini">صغّر ▲</button></h2>
+        <div class="tebody">
+        <p>اسحب أي زرار أو الاستيك للمكان اللي يريحك، ودوس عليه عشان تغيّر حجمه.</p>
+        <div class="terow"><label>الحجم: <span class="tesel"></span></label><input type="range" class="tesize" min="60" max="160" step="5"><b class="tesizev"></b></div>
+        <div class="terow"><label>شفافية الزراير</label><input type="range" class="teop" min="35" max="100" step="5"><b class="teopv"></b></div>
+        </div>
+        <div class="actions"><button class="big tesave">حفظ</button><button class="tereset">رجّع زي الأول</button><button class="tecancel">إلغاء</button></div>
+      </div>`);
+    $('.temini', te).onclick = () => {
+      const bar = $('.tebar', te);
+      bar.classList.toggle('mini');
+      $('.temini', te).textContent = bar.classList.contains('mini') ? 'كبّر ▼' : 'صغّر ▲';
+    };
+    const selScale = () => {
+      const tp = this.game.touchPad, k = tp.selected || 'shoot';
+      return k === 'stick' ? tp.layout.stick : tp.layout.buttons[k];
+    };
+    this.refreshTouchEditor = () => {
+      const tp = this.game.touchPad;
+      if (!tp) return;
+      const k = tp.selected || 'shoot';
+      $('.tesel', te).textContent = tp.label(k);
+      const v = Math.round(selScale().scale * 100);
+      $('.tesize', te).value = v;
+      $('.tesizev', te).textContent = arNum(v) + '٪';
+      const o = Math.round(tp.layout.opacity * 100);
+      $('.teop', te).value = o;
+      $('.teopv', te).textContent = arNum(o) + '٪';
+    };
+    $('.tesize', te).oninput = (e) => { selScale().scale = e.target.value / 100; this.game.touchPad.applyLayout(); this.refreshTouchEditor(); };
+    $('.teop', te).oninput = (e) => { this.game.touchPad.layout.opacity = e.target.value / 100; this.game.touchPad.applyLayout(); this.refreshTouchEditor(); };
+    $('.tesave', te).onclick = () => { audio.play('coin'); this.closeTouchEditor(true); };
+    $('.tecancel', te).onclick = () => { audio.play('click'); this.closeTouchEditor(false); };
+    $('.tereset', te).onclick = () => {
+      audio.play('click');
+      const tp = this.game.touchPad;
+      tp.layout = tp.constructor.defaults();
+      tp.applyLayout();
+      this.refreshTouchEditor();
+    };
 
     add('pause', `
       <div class="panel small">
@@ -241,6 +287,28 @@ export class UI {
     $('.seg[data-k="diff"]', sc).parentElement.style.display = s.versus ? 'none' : '';
     sc.querySelectorAll('.teams')[0].previousElementSibling.textContent = s.versus ? 'اللاعب الأول' : 'فريقك';
     sc.querySelectorAll('.teams')[1].previousElementSibling.textContent = s.versus ? 'اللاعب التاني' : 'الخصم';
+  }
+
+  openTouchEditor() {
+    const tp = this.game.ensureTouchPad();
+    this.touchBackup = JSON.parse(JSON.stringify(tp.layout));
+    tp.onSelect = () => this.refreshTouchEditor();
+    tp.onChange = () => this.refreshTouchEditor();
+    tp.show(true);
+    tp.setEditing(true);
+    this.show('touchedit');
+    this.refreshTouchEditor();
+  }
+
+  closeTouchEditor(save) {
+    const tp = this.game.touchPad;
+    if (save) this.game.setSetting('touchLayout', JSON.parse(JSON.stringify(tp.layout)));
+    else tp.setLayout(this.touchBackup);
+    tp.setEditing(false);
+    tp.onSelect = tp.onChange = null;
+    const inMatch = this.game.match && !this.game.match.opts.demo && this.game.touch && !this.game.match.opts.versus;
+    tp.show(!!inMatch && this.settingsReturn === 'pause');
+    this.show('settings');
   }
 
   refreshSettings() {

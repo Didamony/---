@@ -35,8 +35,8 @@ class Game {
     this.ui = new UI(this);
     this.tourney = new Tournament();
     this.touch = isTouch();
-    this.touchPad = this.touch ? new TouchPad(document.getElementById('touch')) : null;
-    if (this.touchPad) this.touchPad.show(false);
+    this.touchPad = null;
+    if (this.touch) this.ensureTouchPad();
     this.match = null;
     this.paused = false;
     this.clock = new THREE.Clock();
@@ -55,6 +55,16 @@ class Game {
   }
 
   get quality() { return this.settings.quality; }
+
+  // زراير الموبايل (بتتعمل على الكمبيوتر برضه لو حد فتح شاشة التظبيط)
+  ensureTouchPad() {
+    if (!this.touchPad) {
+      this.touchPad = new TouchPad(document.getElementById('touch'));
+      this.touchPad.setLayout(this.settings.touchLayout);
+      this.touchPad.show(false);
+    }
+    return this.touchPad;
+  }
 
   async init() {
     this.ui.show('loading');
@@ -146,7 +156,7 @@ class Game {
         new Controller({ keymap: 'p2', gamepad: 1, color: '#62f0ff', label: '٢' }),
       ];
     }
-    return [new Controller({ keymap: 'solo', gamepad: 0, touch: this.touchPad, color: '#ffd23f' }), null];
+    return [new Controller({ keymap: 'solo', gamepad: 0, touch: this.touch ? this.touchPad : null, color: '#ffd23f' }), null];
   }
 
   startFromSetup(sel) {
@@ -181,7 +191,7 @@ class Game {
       this.resize();
       this.paused = false;
       this.ui.hideScreens();
-      if (this.touchPad) this.touchPad.show(!opts.versus);
+      if (this.touchPad) this.touchPad.show(this.touch && !opts.versus);
       this.clock.getDelta();
     }, 30);
   }

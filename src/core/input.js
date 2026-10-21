@@ -125,8 +125,8 @@ export class TouchPad {
     this.el = document.createElement('div');
     this.el.className = 'touchpad';
     let html = '<div class="tzone"><div class="stick"><i class="tick t1"></i><i class="tick t2"></i><i class="tick t3"></i><i class="tick t4"></i><div class="knob"></div></div></div><div class="tcluster">';
-    for (const [k, [size, r, b]] of Object.entries(LAYOUT)) {
-      html += `<button data-b="${k}" class="tb tb-${k}" style="width:${size}px;height:${size}px;right:${r}px;bottom:${b}px">` +
+    for (const k of Object.keys(LAYOUT)) {
+      html += `<button data-b="${k}" class="tb tb-${k}">` +
         `<svg viewBox="0 0 24 24">${ICONS[k]}</svg><span>${LABELS[k]}</span></button>`;
     }
     html += '</div>';
@@ -137,10 +137,9 @@ export class TouchPad {
     const stick = this.el.querySelector('.stick');
     const knob = this.el.querySelector('.knob');
     let sid = null, cx = 0, cy = 0;
-    const R = 52;
     // الاستيك بيتحط مكان ما صباعك ينزل في النص الشمال
     zone.addEventListener('touchstart', (e) => {
-      if (sid !== null) return;
+      if (sid !== null || this.editing) return;
       const t = e.changedTouches[0];
       sid = t.identifier;
       const zr = zone.getBoundingClientRect();
@@ -157,6 +156,7 @@ export class TouchPad {
         if (t.identifier !== sid) continue;
         let dx = t.clientX - cx, dy = t.clientY - cy;
         const l = Math.hypot(dx, dy);
+        const R = this.R;
         if (l > R) { dx *= R / l; dy *= R / l; }
         knob.style.transform = `translate(${dx}px,${dy}px)`;
         const k = Math.min(1, l / R);
@@ -177,14 +177,111 @@ export class TouchPad {
     window.addEventListener('touchcancel', end);
     this.el.querySelectorAll('.tb').forEach((b) => {
       const n = b.dataset.b;
-      const on = (e) => { this.btn[n] = true; b.classList.add('on'); e.preventDefault(); };
+      const on = (e) => { if (this.editing) return; this.btn[n] = true; b.classList.add('on'); e.preventDefault(); };
       const off = (e) => { this.btn[n] = false; b.classList.remove('on'); e.preventDefault(); };
       b.addEventListener('touchstart', on, { passive: false });
       b.addEventListener('touchend', off, { passive: false });
       b.addEventListener('touchcancel', off, { passive: false });
     });
     this.ctx = '';
+    this.stick = stick;
+    this.zone = zone;
+    this.editing = false;
+    this.layout = TouchPad.defaults();
+    this.applyLayout();
+    this.setupEditing();
   }
+
+  // ---------------------------------------------------------- مكان وحجم الزراير
+  static defaults() {
+    const o = { buttons: {}, stick: { left: 26, bottom: 22, scale: 1 }, opacity: 1 };
+    for (const [k, [size, r, b]] of Object.entries(LAYOUT)) o.buttons[k] = { size, r, b, scale: 1 };
+    return o;
+  }
+
+  setLayout(saved) {
+    const d = TouchPad.defaults();
+    if (saved && typeof saved === 'object') {
+      for (const k of Object.keys(d.buttons)) Object.assign(d.buttons[k], saved.buttons?.[k] || {});
+      Object.assign(d.stick, saved.stick || {});
+      if (typeof saved.opacity === 'number') d.opacity = saved.opacity;
+    }
+    this.layout = d;
+    this.applyLayout();
+  }
+
+  applyLayout() {
+    const L = this.layout;
+    this.el.querySelectorAll('.tb').forEach((b) => {
+      const c = L.buttons[b.dataset.b];
+      const sz = Math.round(c.size * c.scale);
+      // المكان محسوب من نص الزرار عشان التكبير ما يزقّهوش
+      b.style.width = b.style.height = sz + 'px';
+      b.style.right = Math.round(c.r + (c.size - sz) / 2) + 'px';
+      b.style.bottom = Math.round(c.b + (c.size - sz) / 2) + 'px';
+    });
+    const st = this.stick, sz = Math.round(132 * L.stick.scale);
+    st.style.width = st.style.height = sz + 'px';
+    st.style.setProperty('--rest-left', L.stick.left + 'px');
+    st.style.setProperty('--rest-bottom', L.stick.bottom + 'px');
+    this.el.style.setProperty('--tp-opacity', L.opacity);
+    this.R = 52 * L.stick.scale;
+  }
+
+  // في وضع التظبيط: اسحب أي زرار أو الاستيك، ودوس عليه عشان تختاره
+  setupEditing() {
+    let drag = null;
+    const down = (e) => {
+      if (!this.editing) return;
+      const t = e.target.closest('.tb, .stick');
+      if (!t) return;
+      e.preventDefault();
+      const key = t.classList.contains('stick') ? 'stick' : t.dataset.b;
+      const r = t.getBoundingClientRect();
+      drag = { key, el: t, dx: e.clientX - (r.left + r.width / 2), dy: e.clientY - (r.top + r.height / 2), id: e.pointerId };
+      this.select(key);
+    };
+    const move = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const cx = e.clientX - drag.dx, cy = e.clientY - drag.dy;
+      const W = window.innerWidth, H = window.innerHeight;
+      if (drag.key === 'stick') {
+        const s = this.layout.stick, sz = 132 * s.scale;
+        const zr = this.zone.getBoundingClientRect();
+        s.left = Math.round(Math.min(Math.max(0, cx - zr.left - sz / 2), W - sz));
+        s.bottom = Math.round(Math.min(Math.max(0, zr.bottom - cy - sz / 2), H - sz));
+      } else {
+        const c = this.layout.buttons[drag.key];
+        const cr = this.cluster.getBoundingClientRect();
+        const k = cr.width / 300 || 1; // لو الزراير متصغرة على الشاشات القصيرة
+        c.r = Math.round(Math.min(Math.max(0, (cr.right - cx) / k - c.size / 2), W / k - c.size));
+        c.b = Math.round(Math.min(Math.max(0, (cr.bottom - cy) / k - c.size / 2), H / k - c.size));
+      }
+      this.applyLayout();
+    };
+    const up = (e) => { if (drag && e.pointerId === drag.id) { drag = null; if (this.onChange) this.onChange(); } };
+    this.el.addEventListener('pointerdown', down);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  }
+
+  select(key) {
+    this.selected = key;
+    this.el.querySelectorAll('.tb, .stick').forEach((b) => b.classList.toggle('sel', (b.dataset.b || 'stick') === key));
+    if (this.onSelect) this.onSelect(key);
+  }
+
+  setEditing(on) {
+    this.editing = on;
+    this.el.classList.toggle('editing', on);
+    for (const k in this.btn) this.btn[k] = false;
+    this.axis.x = this.axis.z = 0;
+    if (on) { this.setContext(''); this.select(this.selected || 'shoot'); }
+    else this.el.querySelectorAll('.sel').forEach((b) => b.classList.remove('sel'));
+  }
+
+  label(key) { return key === 'stick' ? 'الاستيك' : LABELS[key]; }
 
   // معاك الكورة = زراير الهجوم واضحة، مش معاك = زراير الدفاع
   setContext(mode) {
