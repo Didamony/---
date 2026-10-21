@@ -133,7 +133,7 @@ export class UI {
     const maps = $('.maps', setup);
     MAP_ORDER.forEach((id) => {
       const m = MAPS[id];
-      const c = el('button', 'mapcard', `<div class="mc-art mc-${id}"></div><b>${m.name}</b><small>${m.desc}</small><em>${arNum(m.teamSize)} × ${arNum(m.teamSize)}</em>`);
+      const c = el('button', 'mapcard', `<div class="mc-art mc-${id}" style="background-image:url(assets/maps/${id}.jpg)"></div><b>${m.name}</b><small>${m.desc}</small><em>${arNum(m.teamSize)} × ${arNum(m.teamSize)}</em>`);
       c.dataset.v = id;
       c.onclick = () => { audio.play('click'); this.setupSel.map = id; this.refreshSetup(); };
       maps.appendChild(c);

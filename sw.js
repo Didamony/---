@@ -1,8 +1,9 @@
 // كاش عشان اللعبة تشتغل من غير نت بعد أول مرة
-const CACHE = 'kora-shaware3-v1';
+const CACHE = 'kora-shaware3-v2';
 const FILES = ['./', 'index.html', 'game.js', 'style.css', 'fonts.css', 'manifest.webmanifest',
   'assets/logo/icon-512.png', 'assets/logo/icon-192.png', 'assets/logo/favicon-64.png', 'assets/logo/favicon-32.png',
-  'assets/logo/apple-touch-icon.png', 'assets/logo/graffiti-640.png', 'assets/logo/badge-400.png', 'assets/logo/wordmark-800.png'];
+  'assets/logo/apple-touch-icon.png', 'assets/logo/graffiti-640.png', 'assets/logo/badge-400.png', 'assets/logo/wordmark-800.png',
+  ...['alley', 'yard', 'school', 'roof', 'microbus', 'mosque', 'beach', 'market'].map((m) => `assets/maps/${m}.jpg`)];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
