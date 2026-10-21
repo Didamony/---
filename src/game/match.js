@@ -173,31 +173,85 @@ export class Match {
     return false;
   }
 
-  bestPassTarget(p, dir, fromGK = false) {
+  // cone: نص زاوية المساعدة بالراديان. لو حد جوه الزاوية الكورة تروح له، لو لأ ترجع null
+  bestPassTarget(p, dir, fromGK = false, cone = null) {
     let best = null;
     const gx = this.goalFor(p.team).x;
+    const hasDir = dir && (dir.x || dir.z);
+    if (hasDir && cone !== null && cone <= 0) return null;
     for (const t of this.teams[p.team]) {
       if (t === p || !t.active || t.isGK || t.state === 'fallen') continue;
       const dx = t.pos.x - p.pos.x, dz = t.pos.z - p.pos.z;
       const d = Math.hypot(dx, dz);
-      if (d < 2 || d > 26) continue;
+      if (d < 1.5 || d > 30) continue;
       let score = 0;
-      if (dir && (dir.x || dir.z)) {
-        const dl = Math.hypot(dir.x, dir.z);
-        const dot = (dx * dir.x + dz * dir.z) / (d * dl);
-        if (dot < 0.35) continue;
-        score += dot * 2.5 - d / 30;
+      if (hasDir) {
+        const da = Math.atan2(dir.x, dir.z);
+        const lx = dx + t.vel.x * 0.5, lz = dz + t.vel.z * 0.5;
+        const ang = (x, z) => { let a = Math.atan2(x, z) - da; while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return Math.abs(a); };
+        const a = Math.min(ang(dx, dz), ang(lx, lz));
+        const limit = cone ?? 0.6;
+        if (a > limit) continue;
+        // الأقرب لخط الاتجاه هو اللي بياخدها
+        score = -a * 4 - d / 40 + Math.min(4, this.pressureDist(t)) / 4 * 0.3;
+        if (this.lineBlocked(p.pos.x, p.pos.z, t.pos.x, t.pos.z, p.team)) score -= 0.3;
       } else {
         const progress = (Math.abs(gx - p.pos.x) - Math.abs(gx - t.pos.x)) / 10;
         score += progress * (fromGK ? 0.3 : 1);
+        const open = Math.min(4, this.pressureDist(t)) / 4;
+        score += open * 0.8 - d / 28;
+        if (this.lineBlocked(p.pos.x, p.pos.z, t.pos.x, t.pos.z, p.team)) score -= 0.7;
       }
-      const open = Math.min(4, this.pressureDist(t)) / 4;
-      score += open * 0.8 - d / 28;
-      if (this.lineBlocked(p.pos.x, p.pos.z, t.pos.x, t.pos.z, p.team)) score -= 0.7;
       if (!best || score > best.score) best = { player: t, score };
     }
     return best;
   }
+
+  // سرعة الباصة: نحسبها بنفس احتكاك الكورة عشان توصل بالسرعة دي بالظبط
+  passSpeedFor(dist, arrive) {
+    const f = this.ball.friction, dt = 1 / 60;
+    let lo = 2, hi = 30;
+    for (let it = 0; it < 18; it++) {
+      const v0 = (lo + hi) / 2;
+      let v = v0, x = 0;
+      while (x < dist && v > 0.05) {
+        x += v * dt;
+        v = Math.max(0, v - (f * dt * 1.4 + v * f * dt * 0.35));
+      }
+      const ok = x >= dist && v >= arrive;
+      if (ok) hi = v0; else lo = v0;
+    }
+    return Math.min(22, hi);
+  }
+
+  passTime(dist, v0) {
+    const f = this.ball.friction, dt = 1 / 30;
+    let v = v0, x = 0, t = 0;
+    while (x < dist && v > 0.05 && t < 4) {
+      x += v * dt; t += dt;
+      v = Math.max(0, v - (f * dt * 1.4 + v * f * dt * 0.35));
+    }
+    return t;
+  }
+
+  // اللعيب اللي جاتله باصة: يروح لخط الكورة ويستناها، ما يجريش بعيد
+  receiveSteer(p) {
+    const b = this.ball;
+    const sp = b.groundSpeed();
+    let tx = b.pos.x, tz = b.pos.z;
+    if (sp > 1.5) {
+      const vx = b.vel.x / sp, vz = b.vel.z / sp;
+      const along = Math.max(0, (p.pos.x - b.pos.x) * vx + (p.pos.z - b.pos.z) * vz);
+      tx = b.pos.x + vx * along;
+      tz = b.pos.z + vz * along;
+    }
+    const dx = tx - p.pos.x, dz = tz - p.pos.z, d = Math.hypot(dx, dz);
+    if (d > 0.12) p.want.set((dx / d) * Math.min(1, d / 1.2), (dz / d) * Math.min(1, d / 1.2));
+    else p.want.set(0, 0);
+    p.wantSprint = d > 3;
+    p.lookAt = b.pos;
+  }
+
 
   nutmegVictim(p) {
     const fx = Math.sin(p.facing), fz = Math.cos(p.facing);
@@ -292,6 +346,11 @@ export class Match {
     this.ui.controlChanged(team, p);
   }
 
+  passCone() {
+    const a = this.game.settings.passAssist || 'normal';
+    return a === 'high' ? 0.62 : a === 'manual' ? 0 : 0.36;
+  }
+
   humanControl(p, c, dt) {
     const ball = this.ball;
     p.want.set(c.axis.x, c.axis.z);
@@ -302,12 +361,27 @@ export class Match {
       return;
     }
     if (!p.active) return;
+    if (!p.hasBall) this.passHeld = false;
+    // جاتلك باصة: اللعيب يستلمها لوحده لحد ما توصله
+    if (this.pendingPass && this.pendingPass.target === p && !this.owner && this.pendingPass.t < 1.8 && p.canAct) {
+      this.receiveSteer(p);
+      return;
+    }
     if (p.hasBall) {
-      if (c.b.pass.pressed) {
-        const dir = (c.axis.x || c.axis.z) ? { x: c.axis.x, z: c.axis.z } : { x: Math.sin(p.facing), z: Math.cos(p.facing) };
-        const best = this.bestPassTarget(p, dir);
-        p.pass(best ? best.player : null, dir.x, dir.z);
+      // الباصة: دوسة خفيفة = قصيرة، تفضل داسس = أقوى وأبعد (لما مفيش زميل في الاتجاه)
+      if (c.b.pass.pressed) this.passHeld = true;
+      if (this.passHeld && c.b.pass.down && c.b.pass.t > 0.15) this.ui.power(Math.min(1, (c.b.pass.t - 0.15) / 0.85), 'باصة');
+      if (this.passHeld && c.b.pass.released) {
+        this.passHeld = false;
+        const t = this.lastPassT || 0;
+        const power = t < 0.15 ? 0.15 : Math.min(1, 0.15 + (t - 0.15) / 0.85 * 0.85);
+        this.ui.power(0);
+        const manualDir = Math.hypot(c.axis.x, c.axis.z) > 0.25;
+        const dir = manualDir ? { x: c.axis.x, z: c.axis.z } : { x: Math.sin(p.facing), z: Math.cos(p.facing) };
+        const best = this.bestPassTarget(p, dir, false, this.passCone());
+        p.pass(best ? best.player : null, dir.x, dir.z, power);
       }
+      if (c.b.pass.down) this.lastPassT = c.b.pass.t;
       if (c.b.shoot.down) {
         this.charge = Math.min(1, c.b.shoot.t / 0.85);
         this.ui.power(this.charge);
@@ -765,7 +839,8 @@ export class Match {
       this.say(p, 'صدّها!', { color: '#ffd23f' });
       return;
     }
-    const ctrlChance = clamp(1.25 - (relV - 9) * 0.06 * (1 / p.mods.control), 0.35, 1);
+    const intended = this.pendingPass && this.pendingPass.target === p;
+    const ctrlChance = clamp(1.25 - (relV - 9) * 0.06 * (1 / p.mods.control) + (intended ? 0.35 : 0), 0.35, 1);
     if (relV > 9 && !chance(ctrlChance)) {
       // الكورة خبطت فيه وطلعت
       ball.vel.x = ball.vel.x * -0.35 + p.vel.x * 0.5 + randRange(-1.5, 1.5);

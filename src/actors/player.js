@@ -234,37 +234,54 @@ export class Player {
 
   // ------------------------------------------------------------ الحركات
   // باصة لزميل (أو في اتجاه لو مفيش حد)
-  pass(target, dirX = 0, dirZ = 0) {
+  pass(target, dirX = 0, dirZ = 0, power = 0.4) {
     if (!this.hasBall || !this.canAct) return false;
     const m = this.match;
-    this.faceTo(target ? target.pos : V.set(this.pos.x + dirX, 0, this.pos.z + dirZ));
+    let aimX, aimZ;
+    if (target) {
+      // نباصي للمكان اللي الزميل هيوصله، مش اللي هو فيه دلوقتي
+      const b = m.ball.pos;
+      let t = 0;
+      for (let i = 0; i < 2; i++) {
+        const lx = target.pos.x + target.vel.x * t * 0.8, lz = target.pos.z + target.vel.z * t * 0.8;
+        const d = Math.hypot(lx - b.x, lz - b.z);
+        t = m.passTime(d, m.passSpeedFor(d, 6.5));
+      }
+      aimX = target.pos.x + target.vel.x * t * 0.8;
+      aimZ = target.pos.z + target.vel.z * t * 0.8;
+    } else {
+      const l = Math.hypot(dirX, dirZ) || 1;
+      const D = 3 + clamp(power, 0, 1) * 19;
+      aimX = this.pos.x + (dirX / l) * D;
+      aimZ = this.pos.z + (dirZ / l) * D;
+    }
+    this.faceTo(V.set(aimX, 0, aimZ));
     this.setState('kick', 0.32);
     this.anim.play('pass', { speed: 1.3 });
     this.pending = {
       t: 0.12, fn: () => {
         if (!this.hasBall) return;
         const b = m.ball.pos;
-        let tx, tz, lob = false;
-        if (target) {
-          const lead = clamp(V2.set(target.pos.x - b.x, 0, target.pos.z - b.z).length() / 13, 0.1, 0.9);
-          tx = target.pos.x + target.vel.x * lead;
-          tz = target.pos.z + target.vel.z * lead;
-          lob = m.lineBlocked(b.x, b.z, tx, tz, this.team);
-        } else {
-          const l = Math.hypot(dirX, dirZ) || 1;
-          tx = b.x + (dirX / l) * 9;
-          tz = b.z + (dirZ / l) * 9;
-        }
-        const dx = tx - b.x, dz = tz - b.z;
+        const dx = aimX - b.x, dz = aimZ - b.z;
         const dist = Math.max(0.5, Math.hypot(dx, dz));
-        let spd = clamp(5.5 + dist * 1.05, 7, 18);
-        let vy = 0.4;
-        if (lob) { spd *= 0.72; vy = clamp(2.5 + dist * 0.38, 3, 7.5); }
-        m.kickBall(this, (dx / dist) * spd, vy, (dz / dist) * spd, { pass: target, kind: 'pass' });
+        // الزميل: الكورة توصله بسرعة يقدر يستلمها. مفيش زميل: تقف عند المسافة اللي اخترتها بقوة الدوسة
+        let spd = target ? m.passSpeedFor(dist, 6.5) : m.passSpeedFor(dist, 0);
+        let vy = 0.3;
+        if (target && m.lineBlocked(b.x, b.z, aimX, aimZ, this.team)) {
+          // في حد في السكة: نرفعها فوقه
+          const T = clamp(dist / 11, 0.5, 1.6);
+          spd = dist / T;
+          vy = 4.9 * T;
+        }
+        // دقة اللعيب: الباصات الطويلة والسريعة فيها غلطة صغيرة
+        const err = (this.ctrl ? 0.025 : (1 - m.aiSkill(this)) * 0.08) * Math.min(1, dist / 15);
+        const a = Math.atan2(dx, dz) + randRange(-err, err);
+        m.kickBall(this, Math.sin(a) * spd, vy, Math.cos(a) * spd, { pass: target, kind: 'pass' });
       },
     };
     return true;
   }
+
 
   // شوطة على الجون
   shoot(power, aimZ = 0, aimLift = 0) {

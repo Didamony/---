@@ -233,10 +233,8 @@ export function thinkAI(p, m, dt) {
   const roles = m.roles[p.team];
   if (roles.chaser === p) { chase(p, m, dt, lvl); return; }
   // لو زميلي بيدوّر عليا
-  if (m.pendingPass && m.pendingPass.target === p) {
-    const b = m.ball;
-    const t = clamp(Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z) / Math.max(4, b.groundSpeed()), 0, 1.2);
-    steerTo(p, b.pos.x + b.vel.x * t, b.pos.z + b.vel.z * t, 0.6, 3);
+  if (m.pendingPass && m.pendingPass.target === p && !m.owner) {
+    m.receiveSteer(p);
     return;
   }
   const attacking = m.owner ? m.owner.team === p.team : m.ball.lastKickTeam === p.team && m.ball.groundSpeed() > 3;

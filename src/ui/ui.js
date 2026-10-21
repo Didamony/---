@@ -129,7 +129,7 @@ export class UI {
           <div class="ccard"><h3>لاعب واحد</h3>
             <table>
               <tr><td><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></td><td>جري</td></tr>
-              <tr><td><kbd>A</kbd></td><td>باصة (ومن غير كورة: اطلب الكورة)</td></tr>
+              <tr><td><kbd>A</kbd></td><td>باصة: للزميل اللي في اتجاهك، ولو مفيش تمشي في الاتجاه. فضل داسس = أبعد</td></tr>
               <tr><td><kbd>S</kbd></td><td>شوطة (دوس كتير = أقوى)</td></tr>
               <tr><td><kbd>E</kbd></td><td class="hot">قطع (يجري لوحده على اللي معاه الكورة، و<kbd>A</kbd> برضه وانت بتدافع)</td></tr>
               <tr><td><kbd>D</kbd></td><td class="hot">كعبلة</td></tr>
@@ -180,6 +180,7 @@ export class UI {
         <h2 class="ttl">الإعدادات</h2>
         <div class="sec"><h3>جودة الرسومات</h3><div class="seg" data-k="quality"><button data-v="high">عالية</button><button data-v="medium">متوسطة</button><button data-v="low">خفيفة (للأجهزة الضعيفة)</button></div></div>
         <div class="sec"><h3>الصوت</h3><input type="range" min="0" max="100" class="vol"><label class="chk"><input type="checkbox" class="mute"> كتم الصوت</label></div>
+        <div class="sec"><h3>مساعدة الباصة</h3><div class="seg" data-k="passAssist"><button data-v="high">عالية</button><button data-v="normal">عادية</button><button data-v="manual">يدوي</button></div></div>
         <div class="sec"><h3>زراير الموبايل</h3><div class="seg"><button class="touchedit-btn">🎮 غيّر مكان وحجم الزراير</button></div></div>
         <div class="sec"><h3>إرشادات الزراير تحت</h3><div class="seg" data-k="hints"><button data-v="on">تظهر</button><button data-v="off">تستخبى</button></div></div>
         <div class="actions"><button class="back big">تمام</button></div>
@@ -509,8 +510,9 @@ export class UI {
     this.toastT = setTimeout(() => t.classList.add('hidden'), 2600);
   }
 
-  power(v) {
+  power(v, label = 'شوطة') {
     const p = $('.power', this.hudEl);
+    $('span', p).textContent = label;
     p.classList.toggle('hidden', v <= 0);
     $('i', p).style.width = Math.round(v * 100) + '%';
     p.classList.toggle('max', v >= 0.95);
