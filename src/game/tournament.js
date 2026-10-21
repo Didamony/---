@@ -57,7 +57,14 @@ export class Tournament {
     else if (w === -1) earn += MONEY.draw;
     else result = 'lose';
     if (b === 0) earn += MONEY.cleanSheet;
-    this.s.money += earn;
+    // الرهان: الكسبان ياكل على حساب التاني
+    const bet = match.opts.bet;
+    let betRes = null;
+    if (bet && w !== -1) {
+      betRes = w === 0 ? 'win' : 'lose';
+      earn += w === 0 ? bet.stake : -Math.min(bet.stake, this.s.money + earn);
+    }
+    this.s.money = Math.max(0, this.s.money + earn);
     if (this.s.foul > 0) this.s.foul--;
     this.s.results[this.s.stage] = { score: [a, b], result, pens: match.pensResult || null };
     if (result === 'win') {
@@ -65,6 +72,6 @@ export class Tournament {
       if (this.s.stage >= TOURNAMENT.length) this.s.done = true;
     }
     this.save();
-    return { earn, result };
+    return { earn, result, bet, betRes };
   }
 }

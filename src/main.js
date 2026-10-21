@@ -204,13 +204,13 @@ class Game {
     });
   }
 
-  startTourneyMatch() {
+  startTourneyMatch(bet = null) {
     const m = this.tourney.current();
     if (!m) return;
     this.startMatch({
       mapId: m.map, night: m.time === 'night', sunset: m.time === 'sunset', weather: m.weather || 'clear', home: 'home', away: m.opp,
       difficulty: this.tourney.stage >= 3 ? 'hard' : 'normal', rule: { type: 'time', seconds: 180 },
-      tourney: true, mods: [this.tourney.mods(), {}],
+      tourney: true, mods: [this.tourney.mods(), {}], bet,
     });
   }
 

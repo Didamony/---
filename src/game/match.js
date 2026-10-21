@@ -138,6 +138,11 @@ export class Match {
     if (!opts.demo) {
       audio.startAmbience(this.night, opts.mapId, this.weather);
       if (opts.mapId === 'school') this.after(0.6, () => audio.play('schoolbell'));
+      if (opts.bet) {
+        const b = opts.bet;
+        this.after(0.4, () => this.say(this.teams[1][1], `على ${b.name} ${b.icon}`, { dur: 2.6 }));
+        this.after(1.4, () => this.say(this.teams[0][1], 'ماشي، جهّز فلوسك', { dur: 2.2 }));
+      }
     }
   }
 
@@ -1251,6 +1256,8 @@ export class Match {
       }
     } else if (ev.type === 'roof') {
       this.updateRoofFetch(ev, dt);
+    } else if (ev.type === 'argue') {
+      this.updateArgue(ev);
     }
   }
 
@@ -1292,6 +1299,7 @@ export class Match {
   checkGoal() {
     const b = this.ball.pos;
     for (const g of this.ctx.goals) {
+      if (this.checkArgue(g)) return;
       const inX = g.type === 'chalk' ? Math.abs(b.x) > Math.abs(g.x) - this.ball.r - 0.08 : Math.abs(b.x) > Math.abs(g.x) + (g.type === 'frame' ? 0.15 : 0.05);
       if (!inX || Math.sign(b.x) !== Math.sign(g.x)) continue;
       if (Math.abs(b.z) < g.hw - 0.02 && b.y < g.h) {
@@ -1305,6 +1313,84 @@ export class Match {
         this.say(this.nearestTo(b, g.side > 0 ? 0 : 1) || this.ball, pick(LINES.miss));
         audio.play('ooh');
       }
+    }
+  }
+
+  // ======================================================== خناقة القوانين
+  // الجون من غير عارضة: لو الكورة عدّت قريب من "فوق" أو لمست الطوبة، العيال بتتخانق والكبير يحكم
+  checkArgue(g) {
+    if (this.pens || this.opts.demo || g.type === 'frame' || this.time < (this.argueAt || 0)) return false;
+    const b = this.ball.pos;
+    const gx = Math.abs(g.x) + 0.05;
+    if (Math.sign(b.x) !== Math.sign(g.x) || Math.abs(b.x) < gx || Math.abs(b.x) > gx + 0.7) return false;
+    const az = Math.abs(b.z);
+    const high = az < g.hw && b.y >= g.h * 0.82 && b.y < g.h * 1.45;
+    const post = b.y < g.h && az > g.hw - 0.22 && az < g.hw + 0.18;
+    if (!high && !post) return false;
+    this.argueAt = this.time + 20;
+    if (!chance(0.7)) return false; // ساعات بتعدّي من غير كلام
+    const team = g.side > 0 ? 0 : 1;
+    // كل ما كانت أقرب للجون، كل ما الكبير يميل إنها جون
+    const k = high ? 1 - (b.y - g.h * 0.82) / (g.h * 0.63) : b.y < g.h && az < g.hw ? 0.75 : 0.3;
+    this.startArgue(team, g, high ? 'high' : 'post', clamp(k, 0.15, 0.85));
+    return true;
+  }
+
+  startArgue(team, g, kind, k) {
+    const b = this.ball;
+    b.frozen = true;
+    b.vel.set(0, 0, 0);
+    this.owner = null;
+    this.pendingPass = null;
+    for (const p of this.allPlayers) p.releasePull();
+    this.setState('event');
+    const spot = new THREE.Vector3(g.x * 0.9, 0, 0);
+    this.eventActive = { type: 'argue', t: 0, team, g, kind, k, spot, said: 0 };
+    this.focusOverride = spot.clone().setY(1);
+    this.rig.zoomTarget = 0.8;
+    audio.play('whistle');
+    this.ui.banner(kind === 'high' ? 'عالية ولا جون؟' : 'خبطت في الطوبة؟', 'العيال اتخانقوا على القانون', 'small');
+    // أقرب اتنين من كل فريق بيشاوروا ويزعقوا
+    this.eventActive.who = [0, 1].flatMap((t) => this.teams[t].filter((p) => p.active && p.state !== 'fallen')
+      .sort((a, c) => a.pos.distanceToSquared(spot) - c.pos.distanceToSquared(spot)).slice(0, 2));
+    for (const p of this.eventActive.who) { p.faceTo(spot); p.anim.play('point'); }
+  }
+
+  updateArgue(ev) {
+    const pro = ev.kind === 'high' ? LINES.argueGoalHigh : LINES.argueGoalPost;
+    const con = ev.kind === 'high' ? LINES.argueHigh : LINES.arguePost;
+    // زعيق بالدور
+    if (ev.t > 0.5 + ev.said * 0.75 && ev.said < 4) {
+      const who = ev.who.filter((p) => p.team === (ev.said % 2 === 0 ? ev.team : 1 - ev.team));
+      const p = who[Math.floor(ev.said / 2) % Math.max(1, who.length)];
+      if (p) { this.say(p, pick(ev.said % 2 === 0 ? pro : con)); p.anim.play(ev.said % 2 ? 'point' : 'wave'); }
+      ev.said++;
+      if (p) this.addScandal(p.team, 4, true);
+    }
+    // الكبير: أكبر واحد قاعد بيتفرج
+    if (ev.t > 3.8 && !ev.ruled) {
+      ev.ruled = true;
+      ev.good = Math.random() < ev.k;
+      const big = this.npcs.filter((n) => n.cheer).sort((a, c) => a.pos.distanceToSquared(ev.spot) - c.pos.distanceToSquared(ev.spot))[0];
+      const line = pick(ev.good ? LINES.bigGood : LINES.bigBad);
+      if (big) { this.say(big, 'الكبير: ' + line, { big: true, color: '#ffd23f' }); big.cheer(1.5); }
+      this.ui.banner(ev.good ? 'الكبير قال: جون!' : 'الكبير قال: مش جون', big ? '' : line, ev.good ? 'goal' : 'small', ev.team);
+      for (const p of ev.who) p.anim.play((p.team === ev.team) === ev.good ? 'cheer' : 'sad');
+    }
+    if (ev.t > 5.4) {
+      this.eventActive = null;
+      this.focusOverride = null;
+      this.rig.zoomTarget = 1;
+      this.ball.frozen = false;
+      if (ev.good) { this.ball.place(ev.g.x + Math.sign(ev.g.x) * 0.6, 0); this.goalScored(ev.team, ev.g); return; }
+      // ضربة مرمى: الحارس ياخدها
+      const gk = this.goalkeeper(1 - ev.team) || this.teams[1 - ev.team].find((p) => p.active);
+      const sx = Math.sign(ev.g.x);
+      gk.place(ev.g.x - sx * 1.6, 0, sx > 0 ? -Math.PI / 2 : Math.PI / 2);
+      gk.setState('play');
+      this.ball.place(gk.pos.x - sx * 0.4, gk.pos.z);
+      this.giveBall(gk);
+      this.setState('play');
     }
   }
 
@@ -1726,6 +1812,10 @@ export class Match {
     this.ui.banner('خلص الماتش!', `${this.teamDef(0).short} ${arNum(this.score[0])} • ${this.teamDef(1).short} ${arNum(this.score[1])}${pensTxt}`, 'end');
     this.ui.pens(null);
     audio.toktokMusic(false);
+    if (this.opts.bet && winner !== -1) {
+      const p = this.teams[winner].find((q) => q.active && !q.isGK);
+      if (p) this.after(1.2, () => this.say(p, pick(winner === 0 ? LINES.betWin : LINES.betLose) + ' ' + this.opts.bet.icon, { dur: 2.4 }));
+    }
   }
 
   dispose() {

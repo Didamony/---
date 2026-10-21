@@ -1,6 +1,6 @@
 // الواجهة: القوايم، الإسكور، عدّاد الفضيحة، فقاعات الكلام، اللافتات
 import * as THREE from 'three';
-import { MAPS, MAP_ORDER, TEAMS, DIFFICULTY, SHOP, TOURNAMENT } from '../game/config.js';
+import { MAPS, MAP_ORDER, TEAMS, DIFFICULTY, SHOP, TOURNAMENT, BETS } from '../game/config.js';
 import { arNum, fmtClock } from '../core/util.js';
 import { audio } from '../core/audio.js';
 import { OPTIONS, SKIN_TONES, loadProfile, saveProfile, cleanName, profileLook } from '../game/profile.js';
@@ -410,7 +410,7 @@ export class UI {
     const b1 = el('button', 'back', 'رجوع'); b1.onclick = () => { audio.play('click'); this.show('menu'); };
     const b2 = el('button', '', '🛒 المحل'); b2.onclick = () => { audio.play('click'); this.showShop(); };
     act.append(b1, b2);
-    if (!T.s.done) { const b3 = el('button', 'big go', 'العب الماتش الجاي'); b3.onclick = () => { audio.play('click'); this.game.startTourneyMatch(); }; act.append(b3); }
+    if (!T.s.done) { const b3 = el('button', 'big go', 'العب الماتش الجاي'); b3.onclick = () => { audio.play('click'); this.showBet(); }; act.append(b3); }
     const b4 = el('button', 'danger', 'ابدأ البطولة من الأول');
     b4.onclick = () => {
       // دوسة أولى تسأل، والتانية تأكد
@@ -419,6 +419,35 @@ export class UI {
     };
     act.append(b4);
     this.show('tourney');
+  }
+
+  // قبل الماتش: الخصم بيعرض رهان
+  showBet() {
+    const T = this.game.tourney, m = T.current();
+    let sc = this.screens.bet;
+    if (!sc) {
+      sc = el('div', 'screen hidden', '<div class="panel bet"><h2 class="ttl">نلعب على إيه؟</h2><p class="bq"></p><div class="bets"></div><div class="actions"></div></div>');
+      sc.id = 'bet';
+      this.screenRoot.appendChild(sc);
+      this.screens.bet = sc;
+    }
+    const opp = TEAMS[m.opp];
+    $('.bq', sc).innerHTML = `<b style="color:${opp.ui === '#3a3a40' ? '#ddd' : opp.ui}">${opp.name}</b> بيقولوا: "اللي يخسر يعزم التاني.. موافقين؟"<br><small>معاك 💰 ${arNum(T.money)} جنيه</small>`;
+    const box = $('.bets', sc);
+    box.innerHTML = '';
+    for (const b of BETS) {
+      const can = T.money >= b.stake;
+      const d = el('button', 'betcard' + (can ? '' : ' off'), `<span class="bi">${b.icon}</span><b>${b.name}</b><small>${can ? `تكسب ${arNum(b.stake)} • تخسر ${arNum(b.stake)}` : `محتاج ${arNum(b.stake)} جنيه في جيبك`}</small>`);
+      d.disabled = !can;
+      d.onclick = () => { audio.play('coin'); this.game.startTourneyMatch(b); };
+      box.appendChild(d);
+    }
+    const act = $('.actions', sc);
+    act.innerHTML = '';
+    const back = el('button', 'back', 'رجوع'); back.onclick = () => { audio.play('click'); this.showTourney(); };
+    const no = el('button', 'big', 'لا، نلعب على الحلو'); no.onclick = () => { audio.play('click'); this.game.startTourneyMatch(null); };
+    act.append(back, no);
+    this.show('bet');
   }
 
   showShop() {
@@ -642,7 +671,8 @@ export class UI {
         <div><b>${arNum(m.stats.momCalls)}</b><small>أمه نادت</small></div>
         <div><b>${arNum(m.stats.windows)}</b><small>إزاز اتكسر</small></div>
       </div>
-      ${earn ? `<div class="earn">💰 كسبت ${arNum(earn.earn)} جنيه ${earn.result === 'win' ? '' : '• لازم تكسب عشان تكمل'}</div>` : ''}`;
+      ${earn?.betRes ? `<div class="betres ${earn.betRes}">${earn.bet.icon} ${earn.betRes === 'win' ? `كسبت الرهان! ${earn.bet.name} على حسابهم (+${arNum(earn.bet.stake)})` : `خسرت الرهان.. هتعزمهم على ${earn.bet.name} (-${arNum(earn.bet.stake)})`}</div>` : ''}
+      ${earn ? `<div class="earn">💰 ${earn.earn >= 0 ? `كسبت ${arNum(earn.earn)}` : `خسرت ${arNum(-earn.earn)}`} جنيه ${earn.result === 'win' ? '' : '• لازم تكسب عشان تكمل'}</div>` : ''}`;
     const act = $('.actions', sc);
     act.innerHTML = '';
     if (m.opts.tourney) {
