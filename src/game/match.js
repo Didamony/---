@@ -280,6 +280,7 @@ export class Match {
     const sp = Math.hypot(vx, vy, vz);
     if (info.kind === 'shot') {
       audio.play('kick', 0.6 + (info.power || 0.5) * 0.8);
+      if (p.ctrl) this.buzz(25 + Math.round((info.power || 0.5) * 30));
       this.stats.shots[p.team]++;
       this.lastShot = { team: p.team, t: this.time, by: p };
       if (info.power > 0.8) this.rig.shake(0.12, 0.2);
@@ -547,6 +548,12 @@ export class Match {
   }
 
   // ======================================================== الحلقة الرئيسية
+  // اهتزاز الموبايل (أندرويد؛ الآيفون ما بيدعمش الاهتزاز من المتصفح)
+  buzz(pattern) {
+    if (this.opts.demo || !this.game.touch || this.game.settings.vibrate === 'off') return;
+    try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) { /* ignore */ }
+  }
+
   // تصوير بطيء للحظات الحلوة
   slowmo(scale, dur) { this.slow = { scale, t: dur }; }
 
@@ -946,6 +953,7 @@ export class Match {
         const foul = o.team !== s.team && !s.slideBallFirst;
         o.fall();
         audio.play('thud');
+        if (o.ctrl || s.ctrl) this.buzz([60, 40, 90]);
         this.after(0.25, () => audio.play('ouch'));
         this.rig.shake(0.25, 0.4);
         this.fx.dizzy(() => o.headPos(tmp.set(0, 0, 0)).add(tmp2.set(0, -0.6, 0)), 2.6);
@@ -1253,6 +1261,7 @@ export class Match {
     const lines = g.type === 'bricks' ? LINES.goalBricks : g.type === 'slippers' ? LINES.goalSlippers : g.type === 'chalk' ? LINES.goalChalk : [];
     this.ui.banner(pick(LINES.goal), own ? `جون في نفسه! (${lt.name})` : `${this.scorer ? this.scorer.name : ''} ${lines.length ? '• ' + pick(lines) : ''}`, 'goal', team);
     audio.play('cheer');
+    this.buzz(this.humanTeams[team] ? [120, 60, 120, 60, 240] : [200]);
     audio.play('whistle');
     this.rig.zoomTarget = 0.82;
     this.rig.shake(0.2, 0.5);
@@ -1333,6 +1342,7 @@ export class Match {
     m.needsUpdate = true;
     this.fx.shatter(tmp.set((w.x0 + w.x1) / 2, (w.y0 + w.y1) / 2, w.z + w.face * 0.1), w.face);
     audio.play('glass');
+    this.buzz([40, 30, 40, 30, 80]);
     this.rig.shake(0.3, 0.5);
     this.stats.windows++;
     const team = this.ball.lastKickTeam >= 0 ? this.ball.lastKickTeam : 0;

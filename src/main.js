@@ -17,7 +17,7 @@ const SETTINGS_KEY = 'matsh-elhara-settings-v1';
 
 class Game {
   constructor() {
-    this.settings = { quality: 'high', volume: 0.8, muted: false, hints: 'on', passAssist: 'normal' };
+    this.settings = { quality: 'high', volume: 0.8, muted: false, hints: 'on', passAssist: 'normal', vibrate: 'on', autoQuality: 'on' };
     try { Object.assign(this.settings, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); } catch (e) { /* ignore */ }
     if (isTouch() && !localStorage.getItem?.(SETTINGS_KEY)) this.settings.quality = 'medium';
     audio.setVolume(this.settings.volume);
@@ -252,15 +252,41 @@ class Game {
 
   onEvent() { /* للبطولة لو احتجنا */ }
 
+  // لو الجهاز بيهنج في أول الماتش نخفف الرسومات لوحدنا
+  watchFps(rawDt) {
+    const m = this.match;
+    if (!m || m.opts.demo || this.paused || this.settings.autoQuality === 'off' || this.settings.quality === 'low') { this.fpsT = 0; this.fpsN = 0; return; }
+    if (m !== this.fpsMatch) { this.fpsMatch = m; this.fpsT = 0; this.fpsN = 0; this.fpsWarm = 0; }
+    this.fpsWarm = (this.fpsWarm || 0) + rawDt;
+    if (this.fpsWarm < 2) return;
+    this.fpsT += rawDt; this.fpsN++;
+    if (this.fpsT < 4) return;
+    const fps = this.fpsN / this.fpsT;
+    this.fpsT = 0; this.fpsN = 0;
+    if (fps < 30) {
+      const next = this.settings.quality === 'high' ? 'medium' : 'low';
+      this.setSetting('quality', next);
+      this.ui.toast(next === 'medium' ? 'خففنا الرسومات شوية عشان اللعب يبقى ناعم' : 'خففنا الرسومات للآخر عشان الجهاز');
+      this.fpsWarm = 0;
+    }
+  }
+
   loop() {
     requestAnimationFrame(() => this.loop());
-    const dt = Math.min(this.clock.getDelta(), 0.05);
+    const raw = this.clock.getDelta();
+    this.watchFps(raw);
+    const dt = Math.min(raw, 0.05);
     if (this.match && !this.paused) this.match.update(dt);
     if (this.match) {
       if (this.composer) this.composer.render();
       else this.renderer.render(this.match.scene, this.camera);
     }
   }
+}
+
+// يشتغل من غير نت بعد أول فتحة (بس من على موقع، مش من ملف)
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
 }
 
 const game = new Game();

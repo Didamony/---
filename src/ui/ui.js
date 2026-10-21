@@ -179,6 +179,8 @@ export class UI {
         <h2 class="ttl">الإعدادات</h2>
         <div class="sec"><h3>جودة الرسومات</h3><div class="seg" data-k="quality"><button data-v="high">عالية</button><button data-v="medium">متوسطة</button><button data-v="low">خفيفة (للأجهزة الضعيفة)</button></div></div>
         <div class="sec"><h3>الصوت</h3><input type="range" min="0" max="100" class="vol"><label class="chk"><input type="checkbox" class="mute"> كتم الصوت</label></div>
+        <div class="sec"><h3>اهتزاز الموبايل</h3><div class="seg" data-k="vibrate"><button data-v="on">شغال</button><button data-v="off">مقفول</button></div></div>
+        <div class="sec"><h3>تخفيف الرسومات لوحدها لو الجهاز بيهنج</h3><div class="seg" data-k="autoQuality"><button data-v="on">أيوه</button><button data-v="off">لأ</button></div></div>
         <div class="sec"><h3>مساعدة الباصة</h3><div class="seg" data-k="passAssist"><button data-v="high">عالية</button><button data-v="normal">عادية</button><button data-v="manual">يدوي</button></div></div>
         <div class="sec"><h3>زراير الموبايل</h3><div class="seg"><button class="touchedit-btn">🎮 غيّر مكان وحجم الزراير</button></div></div>
         <div class="sec"><h3>إرشادات الزراير تحت</h3><div class="seg" data-k="hints"><button data-v="on">تظهر</button><button data-v="off">تستخبى</button></div></div>
