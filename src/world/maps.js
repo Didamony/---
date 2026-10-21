@@ -8,6 +8,7 @@ import {
   bricksGoal, slippersGoal, frameGoal, chalkGoal, tree, barrel, tirePile, plasticChair, cafeTable, pigeonCoop, flagPole, wall, addWindow,
 } from './props.js';
 import { MAPS } from '../game/config.js';
+import { mergeStatic } from '../render/merge.js';
 
 function newCtx(def) {
   return {
@@ -457,6 +458,8 @@ export function buildMap(id) {
   ctx.root.add(outer);
   ctx.root.add(ctx.static);
   ctx.root.add(ctx.dynamic);
+  for (const o of [...ctx.nightOnly, ...ctx.dayOnly]) o.userData.keep = true;
+  mergeStatic(ctx.static);
   ctx.static.traverse((o) => {
     if (o.isMesh) { o.receiveShadow = true; if (!o.userData.dyn) { o.matrixAutoUpdate = false; o.updateMatrix(); } }
   });

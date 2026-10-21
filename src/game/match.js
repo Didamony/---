@@ -1186,7 +1186,11 @@ export class Match {
   onBallHit(c, s, p) {
     if (c.tag === 'post') { audio.play(c.metal ? 'metal' : 'brick'); if (s > 6) this.say(this.ball.lastTouch || this.ball, c.metal ? 'العارضة!' : 'الطوبة!'); }
     else if (c.tag === 'wall' || c.tag === 'obj' || c.tag === 'balconyFloor') audio.play('wall', s);
-    else if (c.tag === 'toktok') { audio.play('metal'); this.say({ headPos: (o = new THREE.Vector3()) => o.set(this.toktok.pos.x, 2.6, this.toktok.pos.z) }, 'حاسب التوكتوك يا عم!'); }
+    else if (c.tag === 'toktok' && this.toktok) {
+      audio.play('metal');
+      const tk = this.toktok;
+      this.say({ headPos: (o = new THREE.Vector3()) => o.set(tk.pos.x, 2.6, tk.pos.z) }, 'حاسب التوكتوك يا عم!');
+    }
     else if (c.tag === 'sheep') { const sh = this.animals.find((a) => a.hit); if (sh) sh.hit(); }
     // إزاز؟
     if ((c.tag === 'wall') && s > 9.5 && this.state === 'play') {
@@ -1287,7 +1291,7 @@ export class Match {
     }
     // توكتوك
     this.toktokT -= dt;
-    if (this.toktokT <= 0 && !this.toktok && this.state === 'play') {
+    if (this.toktokT <= 0 && !this.toktok && this.state === 'play' && this.ctx.extras.toktok) {
       this.toktok = new Toktok(this, this.ctx.extras.toktok);
       this.ui.banner(pick(LINES.toktok), '', 'warn');
       audio.play('horn');

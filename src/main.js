@@ -43,7 +43,9 @@ class Game {
 
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('keydown', (e) => {
-      if ((e.code === 'Escape' || e.code === 'KeyP') && this.match && !this.match.opts.demo && this.match.state !== 'end') this.togglePause();
+      if (!this.match || this.match.opts.demo || this.match.state === 'end') return;
+      // في وضع الاتنين زرار P بتاع الكوبري للاعب التاني
+      if (e.code === 'Escape' || (e.code === 'KeyP' && !this.match.opts.versus)) this.togglePause();
     });
     const unlock = () => audio.init();
     window.addEventListener('pointerdown', unlock);

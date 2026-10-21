@@ -2,6 +2,7 @@
 // والحركة كلها محسوبة من المفاصل دي عشان الرجل تفضل متركبة صح تحت الجسم
 import * as THREE from 'three';
 import { clamp, lerp, smooth, smoothstep, damp } from '../core/util.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // ---------------------------------------------------------------- خامات
 const matCache = new Map();
@@ -83,7 +84,8 @@ export function buildCharacter(look) {
 
   const J = {};
   const add = (parent, name, x, y, z) => {
-    const g = new THREE.Group();
+    const g = new THREE.Bone();
+    g.name = name;
     g.position.set(x, y, z);
     parent.add(g);
     J[name] = g;
@@ -147,6 +149,7 @@ export function buildCharacter(look) {
       new THREE.MeshStandardMaterial({ map: numberTexture(top.number, top.numColor || '#fff'), transparent: true, roughness: 0.9 }), false);
     plane.position.set(0, 0.3, -0.112 * bw);
     plane.rotation.y = Math.PI;
+    plane.userData.keep = true;
     spine.add(plane);
   }
   if (top.type === 'galabeya' || top.type === 'dress') {
@@ -156,8 +159,7 @@ export function buildCharacter(look) {
       return new THREE.LatheGeometry(pts, 20);
     }), mat(top.color, 0.9, { side: THREE.DoubleSide }));
     skirt.scale.set(bw, 1, 0.8 * bw);
-    hips.add(skirt);
-    J.skirt = skirt;
+    add(hips, 'skirt', 0, 0, 0).add(skirt);
   }
 
   // ---------- الرقبة والراس
@@ -252,11 +254,10 @@ export function buildCharacter(look) {
       stripe.position.x = sx * 0.038;
       el.add(stripe);
     }
+    const hb = add(el, side + 'Hand', 0, -FOREARM - 0.015, 0);
     const hand = mesh(geo('hand', () => new THREE.SphereGeometry(0.052, 10, 8)), skinM);
-    hand.position.y = -FOREARM - 0.015;
     hand.scale.set(0.8, 1.1, 0.9);
-    el.add(hand);
-    J[side + 'Hand'] = hand;
+    hb.add(hand);
   }
 
   // ---------- الرجلين (متركبين تحت الوسط مباشرة)
@@ -304,11 +305,63 @@ export function buildCharacter(look) {
       const foot = mesh(geo('bareFoot', () => { const g = new THREE.CapsuleGeometry(0.04, 0.12, 4, 8); g.rotateX(Math.PI / 2); g.scale(1, 0.6, 1); g.translate(0, -0.03, 0.04); return g; }), skinM);
       an.add(foot);
     }
-    J[side + 'Foot'] = shoe;
   }
 
-  root.traverse((o) => { if (o.isMesh) o.frustumCulled = true; });
-  return { root, J, look, scale: s };
+  const skinned = bakeSkinned(root);
+  return { root, J, look, scale: s, mesh: skinned };
+}
+
+// ---------------------------------------------------------------- جسم واحد بهيكل عظمي
+// كل الأجزاء بتتجمع في ميش واحد متربط بالعضم: draw call واحد للشخصية بدل ~٤٥
+const bodyMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0 });
+const skirtMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
+
+function bakeSkinned(root) {
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const bones = [];
+  root.traverse((o) => { if (o.isBone) bones.push(o); });
+  const boneIndex = new Map(bones.map((b, i) => [b, i]));
+  const parts = { body: [], skirt: [] };
+  const remove = [];
+  const rel = new THREE.Matrix4();
+  root.traverse((o) => {
+    if (!o.isMesh || o.userData.keep) return;
+    let b = o.parent;
+    while (b && !b.isBone) b = b.parent;
+    if (!b) return;
+    let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
+    rel.multiplyMatrices(inv, o.matrixWorld);
+    g.applyMatrix4(rel);
+    const n = g.attributes.position.count;
+    const col = new Float32Array(n * 3);
+    const c = o.material.color;
+    for (let i = 0; i < n; i++) { col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+    const bi = boneIndex.get(b);
+    for (let i = 0; i < n; i++) { si[i * 4] = bi; sw[i * 4] = 1; }
+    g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
+    g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+    (o.material.side === THREE.DoubleSide ? parts.skirt : parts.body).push(g);
+    remove.push(o);
+  });
+  for (const o of remove) o.parent.remove(o);
+  const skeleton = new THREE.Skeleton(bones);
+  let main = null;
+  for (const [k, list] of Object.entries(parts)) {
+    if (!list.length) continue;
+    const merged = mergeGeometries(list, false);
+    list.forEach((g) => g.dispose());
+    const m = new THREE.SkinnedMesh(merged, k === 'skirt' ? skirtMat : bodyMat);
+    m.castShadow = true;
+    m.frustumCulled = false;
+    root.add(m);
+    m.bind(skeleton);
+    if (!main) main = m;
+  }
+  return main;
 }
 
 function buildHair(head, style, hairM, look) {
@@ -652,7 +705,7 @@ export class Animator {
     const run = smoothstep(2.2, 5.2, spd);
     const move = smoothstep(0.05, 0.7, spd);
     const idle = 1 - move;
-    const stepLen = lerp(0.6, 1.08, run) * this.c.scale * this.stepLenScale;
+    const stepLen = lerp(0.6, 1.3, run) * this.c.scale * this.stepLenScale;
     const prev = this.phase;
     this.phase += (spd / stepLen) * Math.PI * dt;
     if (this.onStep && Math.floor(prev / Math.PI) !== Math.floor(this.phase / Math.PI) && move > 0.5) this.onStep(run);

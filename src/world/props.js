@@ -588,6 +588,7 @@ export function flagPole(ctx, x, z) {
   const eagle = new THREE.Mesh(new THREE.CircleGeometry(0.1, 10), mat('#c09a30', 0.6, { side: THREE.DoubleSide }));
   eagle.position.set(0.78, 0, 0.005);
   flag.add(eagle);
+  flag.userData.dyn = true;
   g.add(flag);
   ctx.flags.push(flag);
 }

@@ -149,6 +149,7 @@ export class UI {
               <tr><td>كوبري</td><td><kbd>T</kbd></td><td><kbd>P</kbd> / <kbd>Num5</kbd></td></tr>
               <tr><td>سبرنت</td><td><kbd>Shift</kbd> شمال</td><td><kbd>Shift</kbd> يمين / <kbd>Num0</kbd></td></tr>
               <tr><td>غيّر</td><td><kbd>Q</kbd></td><td><kbd>Enter</kbd></td></tr>
+              <tr><td>وقّف</td><td colspan="2"><kbd>Esc</kbd></td></tr>
             </table></div>
           <div class="ccard"><h3>الدراع (Gamepad)</h3>
             <table>
@@ -396,9 +397,11 @@ export class UI {
       if (b.t >= b.dur) { b.el.remove(); this.bubbles.splice(i, 1); continue; }
       if (b.t < 0) continue;
       const w = b.who;
-      if (w.headPos) w.headPos(P);
-      else if (w.pos) P.set(w.pos.x, 1.2, w.pos.z);
-      else continue;
+      try {
+        if (w.headPos) w.headPos(P);
+        else if (w.pos) P.set(w.pos.x, 1.2, w.pos.z);
+        else continue;
+      } catch (e) { b.t = b.dur; continue; }
       P.y += 0.35;
       const s = this.project(P, m);
       if (!s) { b.el.style.opacity = '0'; continue; }

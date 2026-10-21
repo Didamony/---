@@ -144,6 +144,8 @@ export class Player {
       case 'fetch':
         free = false;
         this.walkStep(dt, s === 'fetch' ? 4.2 : 2.4);
+        // لو اتزنق في حاجة ما يفضلش ماشي على طول
+        if (this.walkTo && this.stateT > 9) { this.pos.copy(this.walkTo); this.walkStep(dt, 1); }
         break;
       default:
         break;
