@@ -57,6 +57,8 @@ export class Controller {
     this.color = color;
     this.label = label;
     this.axis = { x: 0, z: 0 };
+    // الاتجاه جاي من استيك (موبايل أو دراع)؟ ساعتها السرعة على قد ما شدّيت
+    this.analog = false;
     this.b = {};
     for (const n of BUTTONS) this.b[n] = { down: false, pressed: false, released: false, t: 0, touch: false };
     // سحبة على زرار الباصة/الشوطة (موبايل): up / left / right
@@ -65,6 +67,7 @@ export class Controller {
 
   update(dt) {
     let x = 0, z = 0;
+    let digital = false, analog = false;
     const raw = {};
     for (const n of BUTTONS) raw[n] = false;
     const km = this.keymap;
@@ -74,6 +77,7 @@ export class Controller {
       if (any(km.right)) x += 1;
       if (any(km.up)) z -= 1;
       if (any(km.down)) z += 1;
+      if (x || z) digital = true;
       for (const n of BUTTONS) if (any(km[n])) raw[n] = true;
     }
     if (this.gamepad !== null) {
@@ -81,8 +85,10 @@ export class Controller {
       const gp = pads && pads[this.gamepad];
       if (gp) {
         const ax = gp.axes[0] || 0, az = gp.axes[1] || 0;
-        if (Math.hypot(ax, az) > 0.2) { x += ax; z += az; }
+        if (Math.hypot(ax, az) > 0.2) { x += ax; z += az; analog = true; }
         const bt = (i) => gp.buttons[i] && gp.buttons[i].pressed;
+        // دراع من غير استيك: الأسهم شغالة زي الكيبورد وزرار الجري لسه موجود
+        if (bt(14) || bt(15) || bt(12) || bt(13)) digital = true;
         if (bt(14)) x -= 1; if (bt(15)) x += 1; if (bt(12)) z -= 1; if (bt(13)) z += 1;
         raw.pass ||= bt(0); raw.tackle ||= bt(1); raw.shoot ||= bt(2); raw.skill ||= bt(3);
         raw.pull ||= bt(4) || bt(6); raw.switch ||= bt(5); raw.sprint ||= bt(7);
@@ -91,12 +97,14 @@ export class Controller {
     const fromTouch = {};
     if (this.touch) {
       x += this.touch.axis.x; z += this.touch.axis.z;
+      if (this.touch.axis.x || this.touch.axis.z) analog = true;
       for (const n of BUTTONS) { if (this.touch.btn[n]) fromTouch[n] = true; raw[n] ||= !!this.touch.btn[n]; }
       for (const n of ['pass', 'shoot']) if (this.touch.btn[n]) this.gest[n] = this.touch.gest[n] || null;
     }
     const l = Math.hypot(x, z);
     if (l > 1) { x /= l; z /= l; }
     this.axis.x = x; this.axis.z = z;
+    this.analog = analog && !digital;
     for (const n of BUTTONS) {
       const s = this.b[n];
       s.pressed = raw[n] && !s.down;
@@ -126,14 +134,17 @@ const ICONS = {
   skill: '<path d="M3 19C6 6 18 6 21 19"/><circle cx="12" cy="18.5" r="2.4"/>',
   switch: '<path d="M4.5 9.5A8 8 0 0118 6.5M19.5 14.5A8 8 0 016 17.5"/><path d="M18.5 2.5v4.5H14M5.5 21.5V17H10"/>',
 };
+const ICONS2 = { pass: ICONS.switch, shoot: ICONS.tackle };
 const LABELS = { shoot: 'شوطة', pass: 'باصة', sprint: 'جري', press: 'قطع', tackle: 'كعبلة', pull: 'شدّ', skill: 'كوبري', switch: 'بدّل' };
-// حجم الزرار ومكانه من ركن الشاشة اليمين تحت
+// من غير كورة: الباصة بتبدّل والشوطة بتكعبل
+const DEF_LABELS = { pass: 'بدّل', shoot: 'كعبلة' };
+// حجم الزرار ومكانه من ركن الشاشة اليمين تحت (الجري من الاستيك، فمفيش زرار جري ولا تبديل ولا كعبلة)
 const LAYOUT = {
-  shoot: [86, 8, 62], pass: [76, 104, 8], sprint: [62, 202, 10],
-  press: [66, 106, 98], tackle: [60, 18, 164], pull: [54, 92, 186], skill: [54, 160, 160], switch: [46, 212, 96],
+  shoot: [88, 8, 62], pass: [78, 106, 8],
+  press: [66, 112, 102], pull: [56, 22, 166], skill: [56, 196, 30],
 };
-const ATTACK = ['shoot', 'skill'];
-const DEFEND = ['press', 'tackle', 'pull'];
+const ATTACK = ['skill'];
+const DEFEND = ['press', 'pull'];
 
 export class TouchPad {
   constructor(root) {
@@ -187,8 +198,9 @@ export class TouchPad {
         if (l > R) { dx *= R / l; dy *= R / l; }
         knob.style.transform = `translate(${dx}px,${dy}px)`;
         const k = Math.min(1, l / R);
-        this.axis.x = l > 6 ? (dx / Math.max(l, 1e-3)) * Math.max(k, 0.35) : 0;
-        this.axis.z = l > 6 ? (dy / Math.max(l, 1e-3)) * Math.max(k, 0.35) : 0;
+        const dl = Math.max(Math.hypot(dx, dy), 1e-3);
+        this.axis.x = l > 6 ? (dx / dl) * Math.max(k, 0.35) : 0;
+        this.axis.z = l > 6 ? (dy / dl) * Math.max(k, 0.35) : 0;
       }
     };
     const end = (e) => {
@@ -331,6 +343,9 @@ export class TouchPad {
       const k = b.dataset.b;
       b.classList.toggle('dim', (mode === 'attack' && DEFEND.includes(k)) || (mode === 'defend' && ATTACK.includes(k)));
       b.classList.toggle('hint', mode === 'defend' && k === 'press');
+      const sp = b.querySelector('span');
+      if (sp) sp.textContent = (mode === 'defend' && DEF_LABELS[k]) || LABELS[k];
+      if (ICONS2[k]) b.querySelector('svg').innerHTML = mode === 'defend' ? ICONS2[k] : ICONS[k];
     });
   }
 

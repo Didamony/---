@@ -1,6 +1,7 @@
 // بيجمع الكود كله في ملف واحد game.js عشان اللعبة تشتغل بدبل كليك من غير سيرفر
 import * as esbuild from 'esbuild';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 const entry = process.argv[2] || 'src/main.js';
 const out = process.argv[3] || 'game.js';
@@ -31,5 +32,13 @@ if (!dev) {
     }
   }
   writeFileSync('fonts.css', faces.join('\n') + '\n');
+}
+// رقم نسخة في اللينكات عشان الموبايل ما يفضلش فاتح نسخة قديمة متخزنة
+if (!dev && out === 'game.js') {
+  const v = createHash('sha1').update(readFileSync('game.js')).update(readFileSync('style.css')).digest('hex').slice(0, 8);
+  const html = readFileSync('index.html', 'utf8')
+    .replace(/href="style\.css(\?v=\w+)?"/, `href="style.css?v=${v}"`)
+    .replace(/src="game\.js(\?v=\w+)?"/, `src="game.js?v=${v}"`);
+  writeFileSync('index.html', html);
 }
 console.log('built', out);

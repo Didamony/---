@@ -371,8 +371,7 @@ export class Match {
 
   humanControl(p, c, dt) {
     const ball = this.ball;
-    p.want.set(c.axis.x, c.axis.z);
-    p.wantSprint = c.b.sprint.down;
+    this.applyMove(p, c);
     p.lookAt = ball.pos;
     if (p.pullTarget) {
       if (!c.b.pull.down) p.releasePull(false);
@@ -418,9 +417,10 @@ export class Match {
       if (c.b.skill.pressed) p.nutmeg();
     } else {
       if (this.charge) { this.charge = 0; this.ui.power(0); }
-      // قطع: زرار القطع (أو الباصة لما الخصم معاه الكورة) يوجّه اللعيب لوحده على اللي معاه الكورة
+      // قطع: زرار القطع يوجّه اللعيب لوحده على اللي معاه الكورة
       const oppHas = this.owner && this.owner.team !== p.team;
-      const pressing = c.b.press.down || (c.b.pass.down && (oppHas || !this.owner));
+      const mateHas = this.owner && this.owner.team === p.team;
+      const pressing = c.b.press.down;
       p.pressing = pressing;
       if (pressing && Math.hypot(c.axis.x, c.axis.z) < 0.25 && p.canAct) {
         let tx, tz;
@@ -442,10 +442,14 @@ export class Match {
         else p.want.set(0, 0);
       }
       // الكورة في الهوا جنبك: شوطة = راسية/ضربة على الجون، باصة = تلعبها لزميل
-      if ((c.b.shoot.pressed || (c.b.pass.pressed && !oppHas)) && ball.pos.y > 0.3 && !this.owner) {
+      const airNear = !this.owner && ball.pos.y > 0.3 && dist2(ball.pos.x, ball.pos.z, p.pos.x, p.pos.z) < 3;
+      if ((c.b.shoot.pressed || c.b.pass.pressed) && airNear) {
         p.airIntent = { kind: c.b.shoot.pressed ? 'shot' : 'pass', t: 0.5, x: c.axis.x, z: c.axis.z };
       }
-      if (c.b.tackle.pressed) {
+      // من غير كورة: الشوطة = كعبلة، والباصة = بدّل اللعيب (زرار الكعبلة والتبديل القديم لسه شغالين على الكيبورد والدراع)
+      const tackle = c.b.tackle.pressed || (c.b.shoot.pressed && !airNear && !mateHas);
+      if (c.b.pass.pressed && !airNear && !mateHas) { this.switchNext(p.team); return; }
+      if (tackle) {
         // نلف ناحية الكورة لو مش ماسك اتجاه
         if (!(c.axis.x || c.axis.z)) p.faceTo(oppHas && dist2(this.owner.pos.x, this.owner.pos.z, p.pos.x, p.pos.z) < 4 ? this.owner.pos : ball.pos);
         else p.facing = Math.atan2(c.axis.x, c.axis.z);
@@ -468,6 +472,19 @@ export class Match {
       }
     }
     if (c.b.switch.pressed) this.switchNext(p.team);
+  }
+
+  // السرعة: بالاستيك على قد ما شدّيت (خفيف = مشي، نص = جري، للآخر = سبرنت). بالأسهم = زرار الجري
+  applyMove(p, c) {
+    const m = Math.hypot(c.axis.x, c.axis.z);
+    if (c.analog && m > 0) {
+      const k = m < 0.6 ? 0.45 / m : 1 / m;
+      p.want.set(c.axis.x * k, c.axis.z * k);
+      p.wantSprint = m >= 0.88 || c.b.sprint.down;
+    } else {
+      p.want.set(c.axis.x, c.axis.z);
+      p.wantSprint = c.b.sprint.down;
+    }
   }
 
   switchNext(team) {
@@ -662,7 +679,7 @@ export class Match {
         else if (this.freezeAI) p.want.set(0, 0);
         else thinkAI(p, this, dt);
       } else if (this.state === 'freekick' || this.state === 'event') {
-        if (p.ctrl && p.state === 'play') { p.want.set(p.ctrl.axis.x, p.ctrl.axis.z); p.wantSprint = p.ctrl.b.sprint.down; }
+        if (p.ctrl && p.state === 'play') this.applyMove(p, p.ctrl);
         else if (!p.ctrl) this.idleAI(p);
       } else if (this.state === 'goal' || this.state === 'end') {
         this.celebrateAI(p);
